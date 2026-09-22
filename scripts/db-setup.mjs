@@ -66,25 +66,51 @@ if (!conn) {
 
 console.log(`[db-setup] Applying schema using ${conn.name}...`);
 
-// Data migrations that have to happen before db push (it refuses data loss).
-try {
-  const { runPreMigrations } = await import("./pre-migrations.mjs");
-  await runPreMigrations(conn.value);
-} catch (error) {
-  console.error("\n[db-setup] Pre-migration step failed:", error?.message ?? error, "\n");
-  process.exit(1);
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Serverless Postgres (Neon and friends) auto-suspends when idle, so the first
+ * connection of a build can time out while the database wakes up. Retry a few
+ * times before failing the deployment over a cold start.
+ */
+async function withRetries(label, attempt) {
+  const delays = [2000, 5000, 10000];
+
+  for (let i = 0; i <= delays.length; i++) {
+    try {
+      return await attempt();
+    } catch (error) {
+      const message = (error?.message || String(error) || "unknown error").trim();
+      if (i === delays.length) {
+        console.error(`\n[db-setup] ${label} failed after ${i + 1} attempts: ${message}\n`);
+        throw error;
+      }
+      console.warn(
+        `[db-setup] ${label} attempt ${i + 1} failed (${message.split("\n")[0]}); ` +
+          `retrying in ${delays[i] / 1000}s...`
+      );
+      await sleep(delays[i]);
+    }
+  }
 }
 
 try {
-  execSync("npx prisma db push --skip-generate", {
-    stdio: "inherit",
-    env: { ...process.env, DATABASE_URL: conn.value },
-  });
+  // Data migrations that have to happen before db push (it refuses data loss).
+  const { runPreMigrations } = await import("./pre-migrations.mjs");
+  await withRetries("Pre-migration step", () => runPreMigrations(conn.value));
+
+  await withRetries("Schema push", async () =>
+    execSync("npx prisma db push --skip-generate", {
+      stdio: "inherit",
+      env: { ...process.env, DATABASE_URL: conn.value },
+    })
+  );
+
   console.log("[db-setup] Schema is up to date.");
 } catch {
   console.error(
-    "\n[db-setup] Could not apply the schema. Check that the database is reachable " +
-      `and that ${conn.name} is a valid Postgres connection string.\n`
+    `[db-setup] Could not apply the schema. Check that the database is reachable and that ` +
+      `${conn.name} is a valid Postgres connection string.\n`
   );
   process.exit(1);
 }
