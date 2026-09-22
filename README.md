@@ -16,14 +16,18 @@ goals, and download a monthly attendance sheet as a PDF with one click.
 
 - **Tutor profiles** — a tutor enters their name (plus optional site, days and times) once;
   the profile stays editable and you can switch between profiles on a shared device.
-- **Students** — create students, search them, and see hours logged this fiscal year at a
-  glance. Each student has their own page.
+- **Students** — create students with a first and last name, search by either, and see hours
+  logged this fiscal year at a glance. Each student has their own page.
 - **Attendance** — click a day on the calendar to log hours tutored, or mark Tutor Absent,
-  Student Absent, or Holiday. A Jul-Jun attendance grid builds itself from those entries,
-  with monthly and grand totals, and downloads as a PDF.
+  Student Absent, or Holiday. Each kind has its own colour (green / amber / rose / violet),
+  used consistently across the calendar, the grid and the PDFs. A Jul-Jun attendance grid
+  builds itself from those entries, with monthly and grand totals.
 - **Achievements** — a checklist of goals grouped by category (Economic, Educational, Family,
   Societal/Community), plus a free-text list for anything else. Starred goals are the
   federally-reportable core outcome measures.
+- **PDFs** — three downloads per student: the attendance sheet for a fiscal year, the
+  achievement checklist, and a full record (details + summary figures + attendance +
+  achievements) from the button at the top of the student's page.
 - **Ending tutoring** — mark a student as no longer being tutored with a reason. Their hours
   stay in the record for reporting; they can be resumed later.
 - **Deleting** — permanently removes a student and their records. Intended for duplicates,
@@ -83,11 +87,15 @@ src/
   lib/
     actions.ts         All data mutations (Next.js Server Actions) — the only place writes happen
     achievementCatalog.ts   The achievement goal categories and items
+    attendanceTypes.ts  Labels, codes and colours for each kind of attendance entry
+    personName.ts       first/last name formatting helpers
     attendanceGrid.ts  Turns raw attendance rows into the Jul-Jun x 1-31 grid
-    pdf.ts             Client-side PDF generation for the attendance grid
+    pdf.ts             Client-side PDF generation (attendance, achievements, full record)
     fiscalYear.ts       Jul-Jun fiscal year helpers
     tutorSession.ts     Cookie-based "who is the current tutor" helper
 prisma/schema.prisma   Data model: Tutor, Student, AttendanceEntry, Achievement
+scripts/db-setup.mjs   Applies the schema during the build
+scripts/pre-migrations.mjs  Data migrations that must run before the schema is applied
 ```
 
 ## Known simplifications (flagging for LVAEP staff)

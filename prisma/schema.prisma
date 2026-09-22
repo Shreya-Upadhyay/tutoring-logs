@@ -11,7 +11,8 @@ datasource db {
 
 model Tutor {
   id        String    @id @default(cuid())
-  name      String
+  firstName String
+  lastName  String? // optional so single-name entries are still possible
   site      String? // tutoring site / location
   days      String? // e.g. "Tuesdays & Thursdays"
   times     String? // e.g. "4:00 - 5:30 PM"
@@ -24,7 +25,8 @@ model Student {
   id        String   @id @default(cuid())
   tutorId   String
   tutor     Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
-  name      String
+  firstName String
+  lastName  String? // optional so single-name entries are still possible
   site      String? // tutoring site
   days      String? // day(s) they meet
   times     String? // time(s) they meet

@@ -20,12 +20,13 @@ function optStr(fd: FormData, key: string): string | null {
 // ---------- Tutor profile ----------
 
 export async function createTutor(formData: FormData): Promise<void> {
-  const name = str(formData, "name");
-  if (!name) throw new Error("Tutor name is required.");
+  const firstName = str(formData, "firstName");
+  if (!firstName) throw new Error("Tutor first name is required.");
 
   const tutor = await prisma.tutor.create({
     data: {
-      name,
+      firstName,
+      lastName: optStr(formData, "lastName"),
       site: optStr(formData, "site"),
       days: optStr(formData, "days"),
       times: optStr(formData, "times"),
@@ -38,13 +39,14 @@ export async function createTutor(formData: FormData): Promise<void> {
 }
 
 export async function updateTutor(tutorId: string, formData: FormData): Promise<void> {
-  const name = str(formData, "name");
-  if (!name) throw new Error("Tutor name is required.");
+  const firstName = str(formData, "firstName");
+  if (!firstName) throw new Error("Tutor first name is required.");
 
   await prisma.tutor.update({
     where: { id: tutorId },
     data: {
-      name,
+      firstName,
+      lastName: optStr(formData, "lastName"),
       site: optStr(formData, "site"),
       days: optStr(formData, "days"),
       times: optStr(formData, "times"),
@@ -75,13 +77,14 @@ export async function createStudent(formData: FormData): Promise<void> {
   const tutorId = getCurrentTutorId();
   if (!tutorId) redirect("/onboarding");
 
-  const name = str(formData, "name");
-  if (!name) throw new Error("Student name is required.");
+  const firstName = str(formData, "firstName");
+  if (!firstName) throw new Error("Student first name is required.");
 
   const student = await prisma.student.create({
     data: {
       tutorId: tutorId as string,
-      name,
+      firstName,
+      lastName: optStr(formData, "lastName"),
       site: optStr(formData, "site"),
       days: optStr(formData, "days"),
       times: optStr(formData, "times"),
@@ -102,13 +105,14 @@ export async function createStudent(formData: FormData): Promise<void> {
 }
 
 export async function updateStudentProfile(studentId: string, formData: FormData): Promise<void> {
-  const name = str(formData, "name");
-  if (!name) throw new Error("Student name is required.");
+  const firstName = str(formData, "firstName");
+  if (!firstName) throw new Error("Student first name is required.");
 
   await prisma.student.update({
     where: { id: studentId },
     data: {
-      name,
+      firstName,
+      lastName: optStr(formData, "lastName"),
       site: optStr(formData, "site"),
       days: optStr(formData, "days"),
       times: optStr(formData, "times"),

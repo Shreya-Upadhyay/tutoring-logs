@@ -66,6 +66,15 @@ if (!conn) {
 
 console.log(`[db-setup] Applying schema using ${conn.name}...`);
 
+// Data migrations that have to happen before db push (it refuses data loss).
+try {
+  const { runPreMigrations } = await import("./pre-migrations.mjs");
+  await runPreMigrations(conn.value);
+} catch (error) {
+  console.error("\n[db-setup] Pre-migration step failed:", error?.message ?? error, "\n");
+  process.exit(1);
+}
+
 try {
   execSync("npx prisma db push --skip-generate", {
     stdio: "inherit",

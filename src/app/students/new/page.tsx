@@ -18,11 +18,25 @@ export default function NewStudentPage() {
       <div className="card p-6">
         <h1 className="mb-4 text-xl font-semibold">Create a new student</h1>
         <form action={createStudent} className="space-y-4">
-          <div>
-            <label className="label" htmlFor="name">
-              Student name *
-            </label>
-            <input id="name" name="name" className="input" required placeholder="Alex Rivera" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label" htmlFor="firstName">
+                First name *
+              </label>
+              <input
+                id="firstName"
+                name="firstName"
+                className="input"
+                required
+                placeholder="Alex"
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor="lastName">
+                Last name
+              </label>
+              <input id="lastName" name="lastName" className="input" placeholder="Rivera" />
+            </div>
           </div>
           <div>
             <label className="label" htmlFor="site">

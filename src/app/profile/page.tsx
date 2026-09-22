@@ -24,11 +24,30 @@ export default async function ProfilePage() {
       <div className="card p-6">
         <h1 className="mb-4 text-xl font-semibold">Edit your tutor profile</h1>
         <form action={updateWithId} className="space-y-4">
-          <div>
-            <label className="label" htmlFor="name">
-              Your name *
-            </label>
-            <input id="name" name="name" className="input" required defaultValue={tutor.name} />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label" htmlFor="firstName">
+                First name *
+              </label>
+              <input
+                id="firstName"
+                name="firstName"
+                className="input"
+                required
+                defaultValue={tutor.firstName}
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor="lastName">
+                Last name
+              </label>
+              <input
+                id="lastName"
+                name="lastName"
+                className="input"
+                defaultValue={tutor.lastName ?? ""}
+              />
+            </div>
           </div>
           <div>
             <label className="label" htmlFor="site">

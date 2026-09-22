@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { createTutor, pickTutor } from "@/lib/actions";
 import { getCurrentTutorId } from "@/lib/tutorSession";
+import { fullName } from "@/lib/personName";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,9 @@ export default async function OnboardingPage() {
     if (existing) redirect("/");
   }
 
-  const tutors = await prisma.tutor.findMany({ orderBy: { name: "asc" } });
+  const tutors = await prisma.tutor.findMany({
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+  });
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-4 py-12">
@@ -26,11 +29,25 @@ export default async function OnboardingPage() {
       <div className="card p-6">
         <h2 className="mb-4 text-lg font-semibold">Set up your tutor profile</h2>
         <form action={createTutor} className="space-y-4">
-          <div>
-            <label className="label" htmlFor="name">
-              Your name *
-            </label>
-            <input id="name" name="name" className="input" required placeholder="Jane Smith" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label" htmlFor="firstName">
+                First name *
+              </label>
+              <input
+                id="firstName"
+                name="firstName"
+                className="input"
+                required
+                placeholder="Jane"
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor="lastName">
+                Last name
+              </label>
+              <input id="lastName" name="lastName" className="input" placeholder="Smith" />
+            </div>
           </div>
           <div>
             <label className="label" htmlFor="site">
@@ -72,7 +89,7 @@ export default async function OnboardingPage() {
             {tutors.map((t) => (
               <form key={t.id} action={pickTutor.bind(null, t.id)}>
                 <button type="submit" className="btn-secondary">
-                  {t.name}
+                  {fullName(t)}
                 </button>
               </form>
             ))}

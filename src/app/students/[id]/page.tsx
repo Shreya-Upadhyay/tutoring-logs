@@ -3,11 +3,14 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTutorId } from "@/lib/tutorSession";
 import { updateStudentProfile } from "@/lib/actions";
-import { initials, avatarClass } from "@/lib/avatarColor";
+import { avatarClass } from "@/lib/avatarColor";
+import { fullName, initialsOf } from "@/lib/personName";
 import AttendanceSection from "@/components/AttendanceSection";
 import AchievementsSection from "@/components/AchievementsSection";
 import StopTutoringButton from "@/components/StopTutoringButton";
 import DeleteStudentButton from "@/components/DeleteStudentButton";
+import StudentRecordPdfButton from "@/components/StudentRecordPdfButton";
+import type { StudentPdfDetails } from "@/lib/pdf";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +30,34 @@ export default async function StudentPage({ params }: { params: { id: string } }
   if (!student) notFound();
 
   const updateWithId = updateStudentProfile.bind(null, student.id);
+  const studentName = fullName(student);
+
+  const details: StudentPdfDetails = {
+    studentName,
+    tutorName: fullName(student.tutor),
+    site: student.site,
+    days: student.days,
+    times: student.times,
+    active: student.active,
+    stoppedReason: student.stoppedReason,
+  };
+
+  const attendanceEntries = student.attendance.map((a) => ({
+    id: a.id,
+    date: a.date.toISOString(),
+    type: a.type,
+    hours: a.hours,
+    notes: a.notes,
+  }));
+
+  const achievements = student.achievements.map((a) => ({
+    id: a.id,
+    category: a.category,
+    itemKey: a.itemKey,
+    label: a.label,
+    attained: a.attained,
+    attainedAt: a.attainedAt ? a.attainedAt.toISOString() : null,
+  }));
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
@@ -35,36 +66,76 @@ export default async function StudentPage({ params }: { params: { id: string } }
       </Link>
 
       <div className="card mb-6 p-5">
-        <div className="flex items-start gap-4">
+        <div className="flex flex-wrap items-start gap-4">
           <span
             className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full text-lg font-semibold ${avatarClass(
-              student.name
+              studentName
             )}`}
           >
-            {initials(student.name)}
+            {initialsOf(student)}
           </span>
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold text-slate-900">{student.name}</h1>
+            <h1 className="text-xl font-bold text-slate-900">{studentName}</h1>
             <p className="text-sm text-slate-500">
               {student.site ?? "No site set"}
               {student.days ? ` · ${student.days}` : ""}
               {student.times ? ` · ${student.times}` : ""}
             </p>
+            <p className="mt-0.5 text-xs text-slate-400">Tutor: {details.tutorName}</p>
           </div>
           <details className="flex-shrink-0">
             <summary className="cursor-pointer select-none list-none rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200">
               Edit details
             </summary>
             <form action={updateWithId} className="mt-3 w-64 space-y-2 text-left">
-              <input name="name" className="input" defaultValue={student.name} required />
-              <input name="site" className="input" defaultValue={student.site ?? ""} placeholder="Tutoring site" />
-              <input name="days" className="input" defaultValue={student.days ?? ""} placeholder="Day(s)" />
-              <input name="times" className="input" defaultValue={student.times ?? ""} placeholder="Time(s)" />
+              <input
+                name="firstName"
+                className="input"
+                defaultValue={student.firstName}
+                placeholder="First name"
+                required
+              />
+              <input
+                name="lastName"
+                className="input"
+                defaultValue={student.lastName ?? ""}
+                placeholder="Last name"
+              />
+              <input
+                name="site"
+                className="input"
+                defaultValue={student.site ?? ""}
+                placeholder="Tutoring site"
+              />
+              <input
+                name="days"
+                className="input"
+                defaultValue={student.days ?? ""}
+                placeholder="Day(s)"
+              />
+              <input
+                name="times"
+                className="input"
+                defaultValue={student.times ?? ""}
+                placeholder="Time(s)"
+              />
               <button type="submit" className="btn-primary w-full">
                 Save
               </button>
             </form>
           </details>
+        </div>
+
+        <div className="mt-4 flex justify-end border-t border-slate-100 pt-4">
+          <StudentRecordPdfButton
+            details={details}
+            entries={attendanceEntries.map((a) => ({
+              date: a.date,
+              type: a.type,
+              hours: a.hours,
+            }))}
+            achievements={achievements}
+          />
         </div>
       </div>
 
@@ -76,16 +147,8 @@ export default async function StudentPage({ params }: { params: { id: string } }
           <div className="p-5">
             <AttendanceSection
               studentId={student.id}
-              studentName={student.name}
-              tutorName={student.tutor.name}
-              site={student.site}
-              entries={student.attendance.map((a) => ({
-                id: a.id,
-                date: a.date.toISOString(),
-                type: a.type,
-                hours: a.hours,
-                notes: a.notes,
-              }))}
+              details={details}
+              entries={attendanceEntries}
             />
           </div>
         </details>
@@ -97,14 +160,8 @@ export default async function StudentPage({ params }: { params: { id: string } }
           <div className="p-5">
             <AchievementsSection
               studentId={student.id}
-              achievements={student.achievements.map((a) => ({
-                id: a.id,
-                category: a.category,
-                itemKey: a.itemKey,
-                label: a.label,
-                attained: a.attained,
-                attainedAt: a.attainedAt ? a.attainedAt.toISOString() : null,
-              }))}
+              details={details}
+              achievements={achievements}
             />
           </div>
         </details>
@@ -119,12 +176,10 @@ export default async function StudentPage({ params }: { params: { id: string } }
 
         <DeleteStudentButton
           studentId={student.id}
-          studentName={student.name}
+          studentName={studentName}
           sessionCount={student.attendance.length}
           totalHours={
-            Math.round(
-              student.attendance.reduce((sum, a) => sum + (a.hours ?? 0), 0) * 10
-            ) / 10
+            Math.round(student.attendance.reduce((sum, a) => sum + (a.hours ?? 0), 0) * 10) / 10
           }
           achievementCount={student.achievements.filter((a) => a.attained).length}
         />

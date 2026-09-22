@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { initials, avatarClass } from "@/lib/avatarColor";
+import { avatarClass } from "@/lib/avatarColor";
+import { fullName, initialsOf, lastNameFirst } from "@/lib/personName";
 
 export interface StudentListItem {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string | null;
   site: string | null;
   active: boolean;
   stoppedReason: string | null;
@@ -20,7 +22,15 @@ export default function StudentList({ students }: { students: StudentListItem[] 
   const filtered = useMemo(() => {
     return students
       .filter((s) => (showStopped ? true : s.active))
-      .filter((s) => s.name.toLowerCase().includes(query.toLowerCase()));
+      .filter((s) => {
+        const needle = query.trim().toLowerCase();
+        if (!needle) return true;
+        // Match either order, so "rivera" and "alex r" both find Alex Rivera.
+        return (
+          fullName(s).toLowerCase().includes(needle) ||
+          lastNameFirst(s).toLowerCase().includes(needle)
+        );
+      });
   }, [students, query, showStopped]);
 
   return (
@@ -28,7 +38,7 @@ export default function StudentList({ students }: { students: StudentListItem[] 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <input
           type="search"
-          placeholder="Search students..."
+          placeholder="Search by first or last name..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="input sm:max-w-xs"
@@ -62,13 +72,15 @@ export default function StudentList({ students }: { students: StudentListItem[] 
               >
                 <span
                   className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold ${avatarClass(
-                    s.name
+                    fullName(s)
                   )}`}
                 >
-                  {initials(s.name)}
+                  {initialsOf(s)}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium text-slate-900">{s.name}</span>
+                  <span className="block truncate font-medium text-slate-900">
+                    {fullName(s)}
+                  </span>
                   <span className="block truncate text-xs text-slate-500">
                     {s.site ?? "No site set"} &middot; {s.hoursThisFY}h this FY
                   </span>

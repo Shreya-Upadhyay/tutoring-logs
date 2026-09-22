@@ -18,7 +18,8 @@ import clsx from "clsx";
 export interface CalendarMark {
   date: Date;
   label: string; // e.g. "2.5h", "TA", "SA", "H"
-  isAbsence: boolean;
+  /** Tailwind classes for this kind of entry, from ATTENDANCE_TYPES. */
+  cellClass: string;
 }
 
 export default function Calendar({
@@ -87,9 +88,7 @@ export default function Calendar({
                 selected
                   ? "bg-brand-600 text-white"
                   : mark
-                  ? mark.isAbsence
-                    ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                    : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                  ? `${mark.cellClass} hover:brightness-95`
                   : "text-slate-700 hover:bg-slate-100",
                 isToday(day) && !selected && "ring-1 ring-brand-400"
               )}

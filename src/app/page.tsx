@@ -6,6 +6,7 @@ import ContactInfoBox from "@/components/ContactInfoBox";
 import DirectionsBox from "@/components/DirectionsBox";
 import StudentList, { StudentListItem } from "@/components/StudentList";
 import { fiscalYearOf } from "@/lib/fiscalYear";
+import { fullName } from "@/lib/personName";
 
 export const dynamic = "force-dynamic";
 
@@ -18,14 +19,15 @@ export default async function HomePage() {
 
   const students = await prisma.student.findMany({
     where: { tutorId },
-    orderBy: [{ active: "desc" }, { name: "asc" }],
+    orderBy: [{ active: "desc" }, { lastName: "asc" }, { firstName: "asc" }],
     include: { attendance: true },
   });
 
   const currentFY = fiscalYearOf(new Date());
   const items: StudentListItem[] = students.map((s) => ({
     id: s.id,
-    name: s.name,
+    firstName: s.firstName,
+    lastName: s.lastName,
     site: s.site,
     active: s.active,
     stoppedReason: s.stoppedReason,
@@ -50,7 +52,7 @@ export default async function HomePage() {
         <div className="flex items-center gap-2 text-sm">
           <span className="text-slate-500">Signed in as</span>
           <Link href="/profile" className="font-medium text-brand-600 hover:underline">
-            {tutor.name}
+            {fullName(tutor)}
           </Link>
         </div>
       </header>

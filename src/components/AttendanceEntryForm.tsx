@@ -3,20 +3,14 @@
 import { useState, useTransition } from "react";
 import { format } from "date-fns";
 import { saveAttendanceEntry, deleteAttendanceEntry } from "@/lib/actions";
+import { ATTENDANCE_TYPE_LIST, type AttendanceTypeKey } from "@/lib/attendanceTypes";
 
 export interface ExistingEntry {
   id: string;
-  type: "HOURS" | "TUTOR_ABSENT" | "STUDENT_ABSENT" | "HOLIDAY";
+  type: AttendanceTypeKey;
   hours: number | null;
   notes: string | null;
 }
-
-const TYPE_OPTIONS: { value: ExistingEntry["type"]; label: string }[] = [
-  { value: "HOURS", label: "Hours tutored" },
-  { value: "TUTOR_ABSENT", label: "TA — Tutor Absent" },
-  { value: "STUDENT_ABSENT", label: "SA — Student Absent" },
-  { value: "HOLIDAY", label: "H — Holiday" },
-];
 
 export default function AttendanceEntryForm({
   studentId,
@@ -76,17 +70,23 @@ export default function AttendanceEntryForm({
       <div className="space-y-3">
         <div>
           <label className="label">What happened this day?</label>
-          <select
-            className="input"
-            value={type}
-            onChange={(e) => setType(e.target.value as ExistingEntry["type"])}
-          >
-            {TYPE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
+          <div className="grid grid-cols-2 gap-2">
+            {ATTENDANCE_TYPE_LIST.map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setType(opt.key)}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition ${
+                  type === opt.key
+                    ? `${opt.cellClass} border-transparent ring-2 ring-brand-500`
+                    : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <span className={`h-3 w-3 flex-shrink-0 rounded-full ${opt.swatchClass}`} />
                 {opt.label}
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
         {type === "HOURS" && (

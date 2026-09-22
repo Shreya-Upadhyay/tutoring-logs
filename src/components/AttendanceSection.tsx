@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 import Calendar, { CalendarMark } from "@/components/Calendar";
 import AttendanceEntryForm, { ExistingEntry } from "@/components/AttendanceEntryForm";
 import { buildAttendanceGrid, FlatAttendanceEntry } from "@/lib/attendanceGrid";
-import { downloadAttendancePdf } from "@/lib/pdf";
+import { downloadAttendancePdf, type StudentPdfDetails } from "@/lib/pdf";
 import { fiscalYearsFromDates } from "@/lib/fiscalYear";
+import { ATTENDANCE_TYPES, ATTENDANCE_TYPE_LIST, typeFromCode } from "@/lib/attendanceTypes";
 
 export interface AttendanceEntryDTO {
   id: string;
@@ -17,15 +18,11 @@ export interface AttendanceEntryDTO {
 
 export default function AttendanceSection({
   studentId,
-  studentName,
-  tutorName,
-  site,
+  details,
   entries,
 }: {
   studentId: string;
-  studentName: string;
-  tutorName: string;
-  site: string | null;
+  details: StudentPdfDetails;
   entries: AttendanceEntryDTO[];
 }) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -39,25 +36,25 @@ export default function AttendanceSection({
 
   const marks: CalendarMark[] = entries.map((e) => ({
     date: new Date(e.date),
-    label: e.type === "HOURS" ? `${e.hours}h` : e.type === "TUTOR_ABSENT" ? "TA" : e.type === "STUDENT_ABSENT" ? "SA" : "H",
-    isAbsence: e.type !== "HOURS",
+    label: e.type === "HOURS" ? `${e.hours}h` : ATTENDANCE_TYPES[e.type].code,
+    cellClass: ATTENDANCE_TYPES[e.type].cellClass,
   }));
 
-  const flatEntries: FlatAttendanceEntry[] = entries.map((e) => ({
-    date: e.date,
-    type: e.type,
-    hours: e.hours,
-  }));
+  const flatEntries: FlatAttendanceEntry[] = useMemo(
+    () => entries.map((e) => ({ date: e.date, type: e.type, hours: e.hours })),
+    [entries]
+  );
 
   const grid = useMemo(() => buildAttendanceGrid(flatEntries, activeFy), [flatEntries, activeFy]);
 
   const existingForSelected: ExistingEntry | null = selectedDate
     ? (() => {
         const match = entries.find(
-          (e) =>
-            new Date(e.date).toDateString() === selectedDate.toDateString()
+          (e) => new Date(e.date).toDateString() === selectedDate.toDateString()
         );
-        return match ? { id: match.id, type: match.type, hours: match.hours, notes: match.notes } : null;
+        return match
+          ? { id: match.id, type: match.type, hours: match.hours, notes: match.notes }
+          : null;
       })()
     : null;
 
@@ -80,6 +77,8 @@ export default function AttendanceSection({
         )}
       </div>
 
+      <Legend />
+
       <div>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -101,16 +100,8 @@ export default function AttendanceSection({
           </div>
           <button
             type="button"
-            className="btn-primary"
-            onClick={() =>
-              downloadAttendancePdf({
-                studentName,
-                tutorName,
-                site,
-                fyLabel: activeFy,
-                grid,
-              })
-            }
+            className="btn-secondary"
+            onClick={() => downloadAttendancePdf({ details, fyLabel: activeFy, grid })}
           >
             Download attendance sheet (PDF)
           </button>
@@ -134,20 +125,23 @@ export default function AttendanceSection({
                   <td className="border border-slate-100 py-1 text-center font-medium text-slate-500">
                     {i + 1}
                   </td>
-                  {row.map((cell, j) => (
-                    <td
-                      key={j}
-                      className={`border border-slate-100 py-1 text-center ${
-                        cell === "TA" || cell === "SA" || cell === "H"
-                          ? "bg-amber-50 font-medium text-amber-700"
-                          : cell && cell !== "—"
-                          ? "bg-emerald-50 text-emerald-800"
-                          : "text-slate-300"
-                      }`}
-                    >
-                      {cell}
-                    </td>
-                  ))}
+                  {row.map((cell, j) => {
+                    const type = typeFromCode(cell);
+                    return (
+                      <td
+                        key={j}
+                        className={`border border-slate-100 py-1 text-center ${
+                          type
+                            ? `${ATTENDANCE_TYPES[type].cellClass} ${
+                                type === "HOURS" ? "" : "font-semibold"
+                              }`
+                            : "text-slate-300"
+                        }`}
+                      >
+                        {cell}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
               <tr className="bg-brand-50 font-semibold">
@@ -165,6 +159,19 @@ export default function AttendanceSection({
           Grand total for FY {activeFy}: <span className="font-medium">{grid.grandTotal} hours</span>
         </p>
       </div>
+    </div>
+  );
+}
+
+function Legend() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg bg-slate-50 px-4 py-3 text-xs text-slate-600">
+      {ATTENDANCE_TYPE_LIST.map((type) => (
+        <span key={type.key} className="flex items-center gap-1.5">
+          <span className={`h-3 w-3 rounded-full ${type.swatchClass}`} />
+          {type.key === "HOURS" ? "Hours tutored" : type.label}
+        </span>
+      ))}
     </div>
   );
 }

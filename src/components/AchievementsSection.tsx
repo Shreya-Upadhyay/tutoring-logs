@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { ACHIEVEMENT_CATALOG, OTHER_CATEGORY, CategoryKey } from "@/lib/achievementCatalog";
 import { setAchievementAttained, addOtherAchievement, deleteOtherAchievement } from "@/lib/actions";
+import { downloadAchievementsPdf, type StudentPdfDetails } from "@/lib/pdf";
+import { toAchievementPdfRows } from "@/lib/achievementsPdfData";
 
 export interface AchievementDTO {
   id: string;
@@ -15,9 +17,11 @@ export interface AchievementDTO {
 
 export default function AchievementsSection({
   studentId,
+  details,
   achievements,
 }: {
   studentId: string;
+  details: StudentPdfDetails;
   achievements: AchievementDTO[];
 }) {
   const [items, setItems] = useState(achievements);
@@ -78,6 +82,18 @@ export default function AchievementsSection({
 
   return (
     <div className="space-y-5">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() =>
+            downloadAchievementsPdf({ details, achievements: toAchievementPdfRows(items) })
+          }
+        >
+          Download achievements (PDF)
+        </button>
+      </div>
+
       {ACHIEVEMENT_CATALOG.map((cat) => (
         <div key={cat.key}>
           <h3 className="mb-2 text-sm font-semibold text-slate-800">

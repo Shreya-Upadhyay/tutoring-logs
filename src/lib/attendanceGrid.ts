@@ -1,17 +1,11 @@
 import { FY_MONTH_ORDER, FY_MONTH_LABELS, fiscalYearStartYear, daysInMonth } from "@/lib/fiscalYear";
+import { cellDisplay, type AttendanceTypeKey } from "@/lib/attendanceTypes";
 
 export interface FlatAttendanceEntry {
   date: string; // ISO
-  type: "HOURS" | "TUTOR_ABSENT" | "STUDENT_ABSENT" | "HOLIDAY";
+  type: AttendanceTypeKey;
   hours: number | null;
 }
-
-const CODE: Record<FlatAttendanceEntry["type"], string> = {
-  HOURS: "",
-  TUTOR_ABSENT: "TA",
-  STUDENT_ABSENT: "SA",
-  HOLIDAY: "H",
-};
 
 export interface AttendanceGridResult {
   monthLabels: string[];
@@ -42,8 +36,7 @@ export function buildAttendanceGrid(
     const expectedCalYear = calMonth >= 6 ? startYear : startYear + 1;
     if (calYear !== expectedCalYear) continue;
 
-    const display = entry.type === "HOURS" ? String(entry.hours ?? "") : CODE[entry.type];
-    cells[day - 1][fyMonthIndex] = display;
+    cells[day - 1][fyMonthIndex] = cellDisplay(entry.type, entry.hours);
 
     if (entry.type === "HOURS" && entry.hours) {
       monthTotals[fyMonthIndex] += entry.hours;
