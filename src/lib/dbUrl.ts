@@ -1,44 +1,75 @@
-// Vercel's Postgres / Neon integrations don't all use the same env var name,
-// depending on which one you provision and when. Rather than forcing the user
-// to rename anything in the Vercel dashboard, resolve the connection string
-// from any of the names those integrations are known to set.
+// Vercel's storage integrations don't all use the same env var name: the
+// standard Neon integration sets DATABASE_URL, Vercel Postgres sets
+// POSTGRES_URL / POSTGRES_PRISMA_URL, and if you give the integration a
+// "Custom Prefix" (because a DATABASE_URL already exists) you get names like
+// STORAGE_URL instead. Rather than making the user rename anything, resolve
+// the connection string from any of them.
+//
+// Values that don't look like a Postgres URL are ignored, so a leftover or
+// placeholder DATABASE_URL can't shadow a real connection string.
 
-const POOLED_CANDIDATES = [
-  "DATABASE_URL", // Neon integration / manual setup
-  "POSTGRES_PRISMA_URL", // Vercel Postgres (pooled, Prisma-tuned)
-  "POSTGRES_URL", // Vercel Postgres (pooled)
-];
+const POSTGRES_SCHEME = /^postgres(ql)?:\/\//i;
+const NON_POOLED_HINT = /NON_POOLING|UNPOOLED|DIRECT/i;
 
+const POOLED_CANDIDATES = ["DATABASE_URL", "POSTGRES_PRISMA_URL", "POSTGRES_URL"];
 const DIRECT_CANDIDATES = [
-  "DATABASE_URL_UNPOOLED", // Neon integration
-  "POSTGRES_URL_NON_POOLING", // Vercel Postgres
+  "DATABASE_URL_UNPOOLED",
+  "POSTGRES_URL_NON_POOLING",
   "DATABASE_URL",
   "POSTGRES_URL",
 ];
 
-function firstSet(names: string[]): { name: string; value: string } | null {
+export interface ResolvedUrl {
+  name: string;
+  value: string;
+}
+
+function isPostgresUrl(value: string | undefined): boolean {
+  return typeof value === "string" && POSTGRES_SCHEME.test(value.trim());
+}
+
+function firstValid(names: string[]): ResolvedUrl | null {
   for (const name of names) {
     const value = process.env[name];
-    if (value && value.trim().length > 0) return { name, value: value.trim() };
+    if (isPostgresUrl(value)) return { name, value: (value as string).trim() };
   }
   return null;
 }
 
+/**
+ * Last resort: any `*_URL` environment variable whose value is a Postgres
+ * connection string. Covers custom-prefixed names (e.g. STORAGE_URL).
+ */
+function scanEnvironment(prefer: "pooled" | "direct"): ResolvedUrl | null {
+  const found = Object.entries(process.env)
+    .filter(([name, value]) => /_URL(_|$)/i.test(name) && isPostgresUrl(value))
+    .map(([name, value]) => ({ name, value: (value as string).trim() }));
+
+  if (found.length === 0) return null;
+
+  const matchesPreference = found.filter((entry) =>
+    prefer === "direct" ? NON_POOLED_HINT.test(entry.name) : !NON_POOLED_HINT.test(entry.name)
+  );
+
+  return matchesPreference[0] ?? found[0];
+}
+
 /** Connection string for the running app (prefers a pooled connection). */
 export function resolveDatabaseUrl(): string | null {
-  return firstSet(POOLED_CANDIDATES)?.value ?? null;
+  const resolved = firstValid(POOLED_CANDIDATES) ?? scanEnvironment("pooled");
+  return resolved?.value ?? null;
 }
 
 /** Connection string for schema changes (prefers a direct, non-pooled connection). */
-export function resolveDirectDatabaseUrl(): { name: string; value: string } | null {
-  return firstSet(DIRECT_CANDIDATES);
+export function resolveDirectDatabaseUrl(): ResolvedUrl | null {
+  return firstValid(DIRECT_CANDIDATES) ?? scanEnvironment("direct");
 }
 
 export const MISSING_DB_URL_MESSAGE = [
   "No Postgres connection string found.",
   "",
-  "Set one of these environment variables for the project:",
-  `  ${POOLED_CANDIDATES.join(", ")}`,
+  "The app accepts DATABASE_URL, POSTGRES_PRISMA_URL, POSTGRES_URL, or any",
+  "environment variable containing _URL whose value starts with postgres://",
   "",
   "On Vercel: open the project -> Storage -> Create Database -> Postgres.",
   "That adds the variable automatically. Then redeploy.",
