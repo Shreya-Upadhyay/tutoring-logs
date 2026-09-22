@@ -64,35 +64,20 @@ goals, and download a monthly attendance sheet as a PDF with one click.
    ```bash
    npm run dev
    ```
-   Open http://localhost:3000 — it will walk you through creating a tutor profile.
+   Open http://localhost:3000 — the first visit goes to sign-up.
 
-## Deploying to Vercel
+## Deployment
 
-1. Push this repo to GitHub (already done if you're reading this from the deployed repo).
-2. In Vercel: **Add New... > Project**, import the GitHub repo.
-3. Before the first deploy, go to the project's **Storage** tab, choose **Postgres**, and
-   create a database. Vercel automatically adds the `DATABASE_URL` (and related) environment
-   variables to the project — no separate account needed.
-4. Deploy. The build automatically runs `prisma generate`, creates/updates the database
-   tables (`prisma db push`), and then builds the app — so there is no manual migration
-   step. If no database is attached yet the build still succeeds — it logs a warning and
-   the site shows a page telling you to attach one and redeploy.
-5. Open the deployed URL — the app is live and storing data in Postgres.
+Live at **https://tutoring-logs.vercel.app**, deployed by Vercel on every push to `master`.
 
-The app accepts whichever connection-string variable your database integration set
-(`DATABASE_URL`, `POSTGRES_PRISMA_URL`, or `POSTGRES_URL`), so nothing needs renaming in the
-Vercel dashboard. See `src/lib/dbUrl.ts`.
+The build applies the database schema itself (`npm run build` runs `prisma generate`, then
+`scripts/db-setup.mjs`, then `next build`), so there is no manual migration step. Environment
+variables live in the Vercel project's settings — see the section below for what they do.
 
-### If you see "Application error" on the deployed site
-
-That means the app is running but couldn't reach the database. Check, in order:
-
-1. A Postgres database exists for the project (**Storage** tab).
-2. The connection-string variable is present for the **Production** environment.
-3. The project has been **redeployed** since the database was added — the tables are created
-   during the build, so a deploy that ran before the database existed has no tables.
-
-The deployment's **Logs** tab in Vercel shows the underlying error message.
+To set this up on a fresh Vercel project: import the GitHub repo, then add a Postgres
+database from the project's **Storage** tab before the first deploy. That sets the connection
+string automatically; the app reads whichever name the integration used (`DATABASE_URL`,
+`POSTGRES_PRISMA_URL` or `POSTGRES_URL` — see `src/lib/dbUrl.ts`), so nothing needs renaming.
 
 ## Project structure
 
