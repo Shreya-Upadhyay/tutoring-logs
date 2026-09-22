@@ -24,7 +24,7 @@ export const ATTENDANCE_TYPES: Record<AttendanceTypeKey, AttendanceTypeMeta> = {
   HOURS: {
     key: "HOURS",
     code: "",
-    label: "Hours tutored",
+    label: "Tutored",
     cellClass: "bg-emerald-100 text-emerald-900",
     swatchClass: "bg-emerald-400",
     pdfFill: [209, 250, 229],

@@ -10,13 +10,14 @@ import AchievementsSection from "@/components/AchievementsSection";
 import StopTutoringButton from "@/components/StopTutoringButton";
 import DeleteStudentButton from "@/components/DeleteStudentButton";
 import StudentRecordPdfButton from "@/components/StudentRecordPdfButton";
+import StudentMonthReportButton from "@/components/StudentMonthReportButton";
+import { toAchievementPdfRows } from "@/lib/achievementsPdfData";
 import type { StudentPdfDetails } from "@/lib/pdf";
 
 export const dynamic = "force-dynamic";
 
 export default async function StudentPage({ params }: { params: { id: string } }) {
   const account = await requireAccount();
-  const staff = isStaff(account);
 
   const student = await prisma.student.findUnique({
     where: { id: params.id },
@@ -29,8 +30,11 @@ export default async function StudentPage({ params }: { params: { id: string } }
 
   if (!student) notFound();
 
-  // Staff may read any student; a tutor may only reach their own.
-  if (!staff && student.tutorId !== account.id) notFound();
+  // Staff may read any student; everyone else only their own. Editing follows
+  // ownership, so a staff member still edits the students they tutor.
+  const owned = student.tutorId === account.id;
+  const readOnly = !owned;
+  if (!owned && !isStaff(account)) notFound();
 
   const updateWithId = updateStudentProfile.bind(null, student.id);
   const studentName = fullName(student);
@@ -86,7 +90,7 @@ export default async function StudentPage({ params }: { params: { id: string } }
             </p>
             <p className="mt-0.5 text-xs text-slate-400">Tutor: {details.tutorName}</p>
           </div>
-          {staff ? (
+          {readOnly ? (
             <span className="flex-shrink-0 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-500">
               View only
             </span>
@@ -135,7 +139,18 @@ export default async function StudentPage({ params }: { params: { id: string } }
           )}
         </div>
 
-        <div className="mt-4 flex justify-end border-t border-slate-100 pt-4">
+        <div className="mt-4 flex flex-wrap items-end justify-end gap-3 border-t border-slate-100 pt-4">
+          <StudentMonthReportButton
+            studentId={student.id}
+            studentName={studentName}
+            tutorName={details.tutorName}
+            entries={attendanceEntries.map((a) => ({
+              date: a.date,
+              type: a.type,
+              hours: a.hours,
+            }))}
+            achievements={toAchievementPdfRows(achievements)}
+          />
           <StudentRecordPdfButton
             details={details}
             entries={attendanceEntries.map((a) => ({
@@ -158,7 +173,7 @@ export default async function StudentPage({ params }: { params: { id: string } }
               studentId={student.id}
               details={details}
               entries={attendanceEntries}
-              readOnly={staff}
+              readOnly={readOnly}
             />
           </div>
         </details>
@@ -172,13 +187,13 @@ export default async function StudentPage({ params }: { params: { id: string } }
               studentId={student.id}
               details={details}
               achievements={achievements}
-              readOnly={staff}
+              readOnly={readOnly}
             />
           </div>
         </details>
       </div>
 
-      {staff ? (
+      {readOnly ? (
         !student.active && (
           <div className="mt-8 card border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             <span className="font-semibold">This student is no longer being tutored.</span>

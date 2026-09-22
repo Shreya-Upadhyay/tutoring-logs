@@ -3,17 +3,24 @@
 import { useState, useTransition } from "react";
 import { signUp } from "@/lib/actions";
 
-type Role = "TUTOR" | "STAFF";
-
 export default function RegistrationForm({ staffCodeRequired }: { staffCodeRequired: boolean }) {
-  const [role, setRole] = useState<Role>("TUTOR");
+  // Not mutually exclusive: someone can tutor their own students and also hold
+  // the LVAEP staff view across the program.
+  const [isTutor, setIsTutor] = useState(true);
+  const [isStaff, setIsStaff] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!isTutor && !isStaff) {
+      setError("Choose at least one: tutor, LVAEP staff, or both.");
+      return;
+    }
+
     const formData = new FormData(event.currentTarget);
-    formData.set("role", role);
+    formData.set("isStaff", String(isStaff));
     setError(null);
 
     startTransition(async () => {
@@ -24,18 +31,18 @@ export default function RegistrationForm({ staffCodeRequired }: { staffCodeRequi
 
   return (
     <div>
-      <p className="label">Which describes you?</p>
+      <p className="label">Which describes you? Choose both if they apply.</p>
 
       <div className="mb-5 grid grid-cols-2 gap-2">
         <RoleOption
-          selected={role === "TUTOR"}
-          onSelect={() => setRole("TUTOR")}
+          selected={isTutor}
+          onSelect={() => setIsTutor((on) => !on)}
           title="Tutor"
-          description="Log your sessions and track your students"
+          description="Log your sessions and track your own students"
         />
         <RoleOption
-          selected={role === "STAFF"}
-          onSelect={() => setRole("STAFF")}
+          selected={isStaff}
+          onSelect={() => setIsStaff((on) => !on)}
           title="LVAEP staff"
           description="View every tutor, student and report"
         />
@@ -104,7 +111,7 @@ export default function RegistrationForm({ staffCodeRequired }: { staffCodeRequi
         </div>
         <p className="-mt-2 text-xs text-slate-500">At least 8 characters.</p>
 
-        {role === "TUTOR" ? (
+        {isTutor && (
           <>
             <div>
               <label className="label" htmlFor="site">
@@ -132,7 +139,9 @@ export default function RegistrationForm({ staffCodeRequired }: { staffCodeRequi
               </div>
             </div>
           </>
-        ) : (
+        )}
+
+        {isStaff && (
           <>
             {staffCodeRequired && (
               <div>
@@ -150,9 +159,10 @@ export default function RegistrationForm({ staffCodeRequired }: { staffCodeRequi
               </div>
             )}
             <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-              Staff accounts can see every tutor, their students, and all reports. They are
-              <span className="font-medium"> view-only</span> — attendance and achievements are
-              recorded by the tutor who holds the sessions.
+              The staff view covers every tutor, their students and all reports. It is
+              <span className="font-medium"> read-only</span> for other tutors&apos; students —
+              those are recorded by whoever holds the sessions
+              {isTutor ? ", though you can still record your own" : ""}.
             </p>
           </>
         )}
@@ -188,7 +198,16 @@ function RoleOption({
           : "border-slate-200 hover:bg-slate-50"
       }`}
     >
-      <span className="block text-sm font-semibold text-slate-900">{title}</span>
+      <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+        <span
+          className={`flex h-4 w-4 items-center justify-center rounded border text-[10px] ${
+            selected ? "border-brand-600 bg-brand-600 text-white" : "border-slate-300 bg-white"
+          }`}
+        >
+          {selected ? "✓" : ""}
+        </span>
+        {title}
+      </span>
       <span className="mt-0.5 block text-xs text-slate-500">{description}</span>
     </button>
   );

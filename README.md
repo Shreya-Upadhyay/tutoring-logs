@@ -18,29 +18,30 @@ goals, and download a monthly attendance sheet as a PDF with one click.
   Pick **Monthly** and a month, or **Yearly** and a fiscal year (July–June), and the report
   shows students served, sessions, total hours, goals met, per-tutor subtotals and a
   per-student breakdown (a Jul–Jun hours grid in the yearly view). Tutors see their own
-  students; staff see the whole program or one tutor at a time. A **Students** dropdown
-  covers all students by default, or narrows the report to one.
+  students; staff see the whole program. **Tutors** and **Students** are multi-select
+  filters — everything by default, or any combination of tutors and students.
 - **The report PDF is the full package** — the summary tables, then the attendance
   spreadsheet for the period (students down the side, days of the month across; a full
   Jul–Jun daily grid per student for annual reports), then each student's goals checklist.
 - **Sign up / log in** — separate pages, with an email and password (minimum 8 characters).
   Passwords can be changed from the profile page.
-- **Two kinds of account** — sign up as a **tutor** (records sessions for your own students)
-  or as **LVAEP staff** (sees every tutor, their students, and all reports, but cannot change
-  anything). Staff land one layer up: a list of tutors, each opening onto that tutor's
-  students.
+- **Tutor and/or LVAEP staff** — the two are not exclusive, so one person can tutor their own
+  students *and* hold the staff view. Anyone can record sessions for students they tutor; the
+  staff flag adds a read-only layer over every other tutor and their students. Write access
+  follows ownership, not the flag, so a staff member still edits the students they tutor.
 - **Tutor profiles** — a tutor enters their name (plus optional site, days and times) once;
   the profile stays editable and you can switch between accounts on a shared device.
 - **Students** — create students with a first and last name, search by either, and see hours
   logged this fiscal year at a glance. Each student has their own page.
-- **Attendance** — click a day on the calendar to log hours tutored, or mark Tutor Absent,
-  Student Absent, or Holiday. Each kind has its own colour (green / amber / rose / violet),
+- **Attendance** — click a day on the calendar and pick **Tutored** (then enter the hours),
+  or mark Tutor Absent, Student Absent, or Holiday. Each kind has its own colour (green / amber / rose / violet),
   used consistently across the calendar, the grid and the PDFs. A Jul-Jun attendance grid
   builds itself from those entries, with monthly and grand totals.
 - **Achievements** — a checklist of goals grouped by category (Economic, Educational, Family,
   Societal/Community), plus a free-text list for anything else. Starred goals are the
   federally-reportable core outcome measures.
-- **PDFs** — three downloads per student: the attendance sheet for a fiscal year, the
+- **PDFs** — four downloads per student: a **month report** for any month straight from the
+  student's page, plus the attendance sheet for a fiscal year, the
   achievement checklist, and a full record (details + summary figures + attendance +
   achievements) from the button at the top of the student's page.
 - **Ending tutoring** — mark a student as no longer being tutored with a reason. Their hours
@@ -127,8 +128,9 @@ scripts/pre-migrations.mjs  Data migrations that must run before the schema is a
   still signed; setting it explicitly is better because rotating the database URL then
   doesn't log everyone out.
 
-Staff accounts are **view-only, enforced on the server**: every write checks the role, and
-tutors can only touch their own students, so a hand-crafted request cannot get around it.
+Write access is **enforced on the server by ownership**: a tutor can only change students
+they own, so the staff view is read-only over everyone else's students without needing a
+separate rule — and a staff member who also tutors keeps full control of their own students.
 
 **Accounts created before passwords existed** have no email or password. The login page
 lists them under "Finish setting up an older account" so the owner can add an email and

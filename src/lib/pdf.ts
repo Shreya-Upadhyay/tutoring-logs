@@ -139,7 +139,7 @@ export function renderAttendanceTable(
     doc.setFillColor(...type.pdfFill);
     doc.rect(x, y - 6, 8, 8, "F");
     doc.setTextColor(71, 85, 105);
-    const label = type.key === "HOURS" ? "Hours tutored" : type.label;
+    const label = type.label;
     doc.text(label, x + 12, y);
     x += doc.getTextWidth(label) + 34;
   }

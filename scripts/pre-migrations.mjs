@@ -91,6 +91,38 @@ async function ensureAuthColumns(prisma) {
 }
 
 /**
+ * role (enum) -> isStaff (boolean), because being a tutor and being LVAEP
+ * staff are not mutually exclusive: anyone can tutor students of their own,
+ * and the flag adds program-wide visibility on top.
+ *
+ * Done here rather than by prisma db push, which will not drop a column
+ * unattended.
+ */
+async function roleToStaffFlag(prisma) {
+  const columns = await columnsOf(prisma, "Tutor");
+  if (columns.length === 0) return "Tutor: table not created yet, nothing to convert";
+  if (!columns.includes("role") && columns.includes("isStaff")) return "Tutor: already converted";
+
+  if (!columns.includes("isStaff")) {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "Tutor" ADD COLUMN "isStaff" BOOLEAN NOT NULL DEFAULT false`
+    );
+  }
+
+  if (columns.includes("role")) {
+    // Carry existing staff accounts over before the column disappears.
+    await prisma.$executeRawUnsafe(
+      `UPDATE "Tutor" SET "isStaff" = true WHERE "role"::text = 'STAFF'`
+    );
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Tutor" DROP COLUMN "role"`);
+    await prisma.$executeRawUnsafe(`DROP TYPE IF EXISTS "UserRole"`);
+    return "Tutor: converted role into isStaff";
+  }
+
+  return "Tutor: added isStaff";
+}
+
+/**
  * Removes accounts that have no password. Those are accounts from before
  * sign-in existed; the program starts fresh from sign-up instead of carrying
  * them forward. Their students, attendance and achievements cascade with them.
@@ -130,6 +162,7 @@ export async function runPreMigrations(connectionString) {
       console.log(`[pre-migrations] ${await splitNameColumns(prisma, table)}`);
     }
     console.log(`[pre-migrations] ${await ensureAuthColumns(prisma)}`);
+    console.log(`[pre-migrations] ${await roleToStaffFlag(prisma)}`);
   } finally {
     await prisma.$disconnect();
   }

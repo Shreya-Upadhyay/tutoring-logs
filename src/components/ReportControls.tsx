@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { downloadReportPdf, type ReportStudentSection } from "@/lib/reportPdf";
 import type { ReportData, ReportStudentInput } from "@/lib/reports";
+import MultiSelect from "@/components/MultiSelect";
 
 export default function ReportControls({
   report,
@@ -36,9 +37,17 @@ export default function ReportControls({
 
   function update(changes: Record<string, string>) {
     const next = new URLSearchParams(params.toString());
-    for (const [key, value] of Object.entries(changes)) next.set(key, value);
+    for (const [key, value] of Object.entries(changes)) {
+      // An empty value means "no filter", so drop it rather than carrying
+      // an empty parameter around in the URL.
+      if (value) next.set(key, value);
+      else next.delete(key);
+    }
     router.push(`/reports?${next.toString()}`);
   }
+
+  const selectedIds = (key: string) =>
+    (params.get(key) ?? "").split(",").filter(Boolean);
 
   return (
     <div className="card mb-6 flex flex-wrap items-end gap-4 p-4">
@@ -99,46 +108,24 @@ export default function ReportControls({
         </div>
       )}
 
-      {studentOptions.length > 1 && (
-        <div>
-          <label className="label" htmlFor="student">
-            Students
-          </label>
-          <select
-            id="student"
-            className="input w-auto"
-            value={params.get("student") ?? "all"}
-            onChange={(e) => update({ student: e.target.value })}
-          >
-            <option value="all">All students ({studentOptions.length})</option>
-            {studentOptions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} only
-              </option>
-            ))}
-          </select>
-        </div>
+      {tutorOptions && (
+        <MultiSelect
+          label="Tutors"
+          allLabel={`All tutors (${tutorOptions.length})`}
+          options={tutorOptions}
+          selected={selectedIds("tutors")}
+          onChange={(ids) => update({ tutors: ids.join(","), students: "" })}
+        />
       )}
 
-      {tutorOptions && (
-        <div>
-          <label className="label" htmlFor="tutor">
-            Tutor
-          </label>
-          <select
-            id="tutor"
-            className="input w-auto"
-            value={params.get("tutor") ?? "all"}
-            onChange={(e) => update({ tutor: e.target.value })}
-          >
-            <option value="all">All tutors</option>
-            {tutorOptions.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      {studentOptions.length > 0 && (
+        <MultiSelect
+          label="Students"
+          allLabel={`All students (${studentOptions.length})`}
+          options={studentOptions}
+          selected={selectedIds("students")}
+          onChange={(ids) => update({ students: ids.join(",") })}
+        />
       )}
 
       <button

@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireAccount, isStaff } from "@/lib/account";
+import { requireStaffAccount } from "@/lib/account";
 import { fullName, initialsOf } from "@/lib/personName";
 import { avatarClass } from "@/lib/avatarColor";
 import StudentList, { StudentListItem } from "@/components/StudentList";
@@ -11,8 +11,7 @@ export const dynamic = "force-dynamic";
 
 /** Staff-only: one tutor and the students behind them. View only. */
 export default async function TutorPage({ params }: { params: { id: string } }) {
-  const account = await requireAccount();
-  if (!isStaff(account)) redirect("/");
+  await requireStaffAccount();
 
   const tutor = await prisma.tutor.findUnique({
     where: { id: params.id },

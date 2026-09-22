@@ -34,10 +34,17 @@ export default async function ReportsPage({
   const staff = isStaff(account);
   const period = periodFromParams(searchParams);
 
-  // Tutors only ever see their own students; staff can scope to one tutor.
+  /** Comma-separated ids from the URL; empty means "no filter". */
+  const idList = (value: string | undefined): string[] =>
+    (value ?? "").split(",").filter(Boolean);
+
+  const tutorIds = idList(searchParams.tutors);
+  const studentIds = idList(searchParams.students);
+
+  // Tutors only ever see their own students; staff can scope to any set of tutors.
   const tutorFilter = staff
-    ? searchParams.tutor && searchParams.tutor !== "all"
-      ? { tutorId: searchParams.tutor }
+    ? tutorIds.length > 0
+      ? { tutorId: { in: tutorIds } }
       : {}
     : { tutorId: account.id };
 
@@ -49,7 +56,6 @@ export default async function ReportsPage({
     }),
     staff
       ? prisma.tutor.findMany({
-          where: { role: "TUTOR" },
           orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
         })
       : Promise.resolve([]),
@@ -71,17 +77,12 @@ export default async function ReportsPage({
       .map((a) => (a.attainedAt ? a.attainedAt.toISOString() : null)),
   }));
 
-  // An optional single-student scope, so one student's report can be produced
-  // on its own rather than the whole caseload.
-  const studentScope = searchParams.student && searchParams.student !== "all"
-    ? searchParams.student
-    : null;
-  const scopedStudents = studentScope
-    ? students.filter((s) => s.id === studentScope)
-    : students;
-  const scopedInputs = studentScope
-    ? inputs.filter((i) => i.id === studentScope)
-    : inputs;
+  // An optional student scope, so a report can cover one student or a chosen
+  // few rather than the whole caseload.
+  const scopedStudents =
+    studentIds.length > 0 ? students.filter((s) => studentIds.includes(s.id)) : students;
+  const scopedInputs =
+    studentIds.length > 0 ? inputs.filter((i) => studentIds.includes(i.id)) : inputs;
 
   const report = buildReport(scopedInputs, period);
   const isYearly = period.kind === "year";
@@ -113,21 +114,23 @@ export default async function ReportsPage({
     new Set([...allDates.map(fiscalYearOf), fiscalYearOf(new Date())])
   ).sort().reverse();
 
-  const scopeTutor =
-    staff && searchParams.tutor && searchParams.tutor !== "all"
-      ? tutors.find((t) => t.id === searchParams.tutor)
-      : null;
-  const scopedStudent = studentScope
-    ? students.find((s) => s.id === studentScope)
-    : null;
+  /** "All tutors", one name, or "3 tutors" - whichever describes the scope. */
+  function describe(kind: string, chosen: { firstName: string; lastName: string | null }[], total: number) {
+    if (chosen.length === 0) return `All ${kind}s`;
+    if (chosen.length === 1) return fullName(chosen[0]);
+    return `${chosen.length} of ${total} ${kind}s`;
+  }
+
+  const chosenTutors = tutors.filter((t) => tutorIds.includes(t.id));
+  const chosenStudents = students.filter((s) => studentIds.includes(s.id));
+
   const tutorScopeLabel = staff
-    ? scopeTutor
-      ? `Tutor: ${fullName(scopeTutor)}`
-      : "All tutors"
+    ? `Tutors: ${describe("tutor", chosenTutors, tutors.length)}`
     : `Tutor: ${fullName(account)}`;
-  const scopeLabel = scopedStudent
-    ? `${tutorScopeLabel} — ${fullName(scopedStudent)} only`
-    : tutorScopeLabel;
+  const scopeLabel =
+    chosenStudents.length > 0
+      ? `${tutorScopeLabel} — Students: ${describe("student", chosenStudents, students.length)}`
+      : tutorScopeLabel;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">

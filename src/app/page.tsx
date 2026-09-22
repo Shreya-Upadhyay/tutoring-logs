@@ -41,12 +41,11 @@ export default async function HomePage() {
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-        <section>
-          {staff ? (
-            <StaffOverview currentFY={currentFY} />
-          ) : (
-            <TutorDashboard tutorId={account.id} currentFY={currentFY} />
-          )}
+        <section className="space-y-8">
+          {/* Everyone can tutor, so their own students come first; the staff
+              view is an additional section rather than a replacement. */}
+          <TutorDashboard tutorId={account.id} currentFY={currentFY} />
+          {staff && <StaffOverview currentFY={currentFY} viewerId={account.id} />}
         </section>
 
         <aside className="space-y-4">
@@ -63,7 +62,7 @@ export default async function HomePage() {
             </Link>
           </div>
           <ContactInfoBox />
-          {!staff && <DirectionsBox />}
+          <DirectionsBox />
         </aside>
       </div>
     </main>
@@ -105,10 +104,17 @@ async function TutorDashboard({ tutorId, currentFY }: { tutorId: string; current
   );
 }
 
-/** LVAEP staff land one layer up: every tutor, with their students behind them. */
-async function StaffOverview({ currentFY }: { currentFY: string }) {
+/** LVAEP staff also see one layer up: every other tutor and their students. */
+async function StaffOverview({
+  currentFY,
+  viewerId,
+}: {
+  currentFY: string;
+  viewerId: string;
+}) {
   const tutors = await prisma.tutor.findMany({
-    where: { role: "TUTOR" },
+    // The viewer's own students already have their own section above.
+    where: { NOT: { id: viewerId } },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     include: { students: { include: { attendance: true } } },
   });
@@ -123,10 +129,11 @@ async function StaffOverview({ currentFY }: { currentFY: string }) {
 
   return (
     <>
-      <div className="mb-4">
+      <div className="mb-4 border-t border-slate-200 pt-6">
         <h2 className="text-lg font-semibold text-slate-900">All Tutors</h2>
+        <p className="text-xs uppercase tracking-wide text-slate-400">LVAEP staff view</p>
         <p className="text-sm text-slate-500">
-          {tutors.length} tutor{tutors.length === 1 ? "" : "s"} &middot;{" "}
+          {tutors.length} other tutor{tutors.length === 1 ? "" : "s"} &middot;{" "}
           {tutors.reduce((n, t) => n + t.students.filter((s) => s.active).length, 0)} active
           students &middot; {programHours} hours in FY {currentFY}
         </p>
@@ -134,7 +141,7 @@ async function StaffOverview({ currentFY }: { currentFY: string }) {
 
       {tutors.length === 0 ? (
         <div className="card p-8 text-center text-sm text-slate-500">
-          No tutors have registered yet.
+          No other tutors have registered yet.
         </div>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">

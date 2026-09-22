@@ -29,27 +29,25 @@ export interface ActionResult {
   message?: string;
 }
 
-/**
- * The signed-in account, if it is allowed to change data. LVAEP staff accounts
- * are view-only, enforced here rather than only in the UI so a hand-crafted
- * request cannot write either.
- */
+/** The signed-in account id, or off to the login page. */
 async function requireEditor(): Promise<string> {
   const id = getCurrentTutorId();
   if (!id) redirect("/login");
 
   const account = await prisma.tutor.findUnique({
     where: { id: id as string },
-    select: { id: true, role: true },
+    select: { id: true },
   });
   if (!account) redirect("/login");
-  if (account.role === "STAFF") {
-    throw new Error("LVAEP staff accounts can view records but not change them.");
-  }
   return account.id;
 }
 
-/** Editor check plus ownership: a tutor may only touch their own students. */
+/**
+ * Ownership is what grants write access: a tutor may only touch their own
+ * students. Staff visibility is read-only precisely because a staff account
+ * does not own other tutors' students. Enforced here rather than only in the
+ * UI so a hand-crafted request cannot write either.
+ */
 async function requireOwnedStudent(studentId: string): Promise<string> {
   const tutorId = await requireEditor();
 
@@ -82,12 +80,12 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
     return { ok: false, message: "The two passwords do not match." };
   }
 
-  const role = str(formData, "role") === "STAFF" ? "STAFF" : "TUTOR";
+  const isStaff = str(formData, "isStaff") === "true";
 
-  // Staff accounts can see every tutor's records, so registering as staff can
-  // be gated behind a shared code. With STAFF_ACCESS_CODE unset the gate is
-  // open - see the README note about this role.
-  if (role === "STAFF") {
+  // Staff accounts can see every tutor's records, so claiming the staff flag
+  // can be gated behind a shared code. With STAFF_ACCESS_CODE unset the gate
+  // is open - see the README note about this role.
+  if (isStaff) {
     const expected = process.env.STAFF_ACCESS_CODE;
     if (expected && str(formData, "accessCode") !== expected) {
       return { ok: false, message: "That staff access code is not correct." };
@@ -122,14 +120,14 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
   try {
     account = await prisma.tutor.create({
     data: {
-      role,
+      isStaff,
       email,
       passwordHash: hashPassword(password),
       firstName,
       lastName,
-      site: role === "TUTOR" ? optStr(formData, "site") : null,
-      days: role === "TUTOR" ? optStr(formData, "days") : null,
-      times: role === "TUTOR" ? optStr(formData, "times") : null,
+      site: optStr(formData, "site"),
+      days: optStr(formData, "days"),
+      times: optStr(formData, "times"),
     },
     });
   } catch (error) {

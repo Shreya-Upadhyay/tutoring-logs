@@ -202,7 +202,7 @@ function Legend() {
       {ATTENDANCE_TYPE_LIST.map((type) => (
         <span key={type.key} className="flex items-center gap-1.5">
           <span className={`h-3 w-3 rounded-full ${type.swatchClass}`} />
-          {type.key === "HOURS" ? "Hours tutored" : type.label}
+          {type.label}
         </span>
       ))}
     </div>

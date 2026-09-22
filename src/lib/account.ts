@@ -19,15 +19,16 @@ export async function requireAccount(): Promise<Account> {
 }
 
 /**
- * An account that is allowed to change data. LVAEP staff accounts are
- * deliberately read-only, so they get sent back to their overview.
+ * An account with the LVAEP staff flag, which grants read-only visibility
+ * across every tutor. Anyone can also tutor students of their own, so this is
+ * an addition to tutoring rather than an alternative to it.
  */
-export async function requireTutorAccount(): Promise<Account> {
+export async function requireStaffAccount(): Promise<Account> {
   const account = await requireAccount();
-  if (account.role === "STAFF") redirect("/");
+  if (!account.isStaff) redirect("/");
   return account;
 }
 
 export function isStaff(account: Account | null): boolean {
-  return account?.role === "STAFF";
+  return account?.isStaff === true;
 }

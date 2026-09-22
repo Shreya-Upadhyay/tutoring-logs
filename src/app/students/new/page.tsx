@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { requireTutorAccount } from "@/lib/account";
+import { requireAccount } from "@/lib/account";
 import { createStudent } from "@/lib/actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewStudentPage() {
-  await requireTutorAccount();
+  await requireAccount();
 
   return (
     <main className="mx-auto max-w-lg px-4 py-10">

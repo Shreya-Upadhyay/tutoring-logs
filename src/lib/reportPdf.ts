@@ -239,7 +239,7 @@ export function downloadReportPdf(opts: {
       doc.setFillColor(...type.pdfFill);
       doc.rect(legendX, afterMatrix + 10, 8, 8, "F");
       doc.setTextColor(...MUTED);
-      const label = type.key === "HOURS" ? "Hours tutored" : type.label;
+      const label = type.label;
       doc.text(label, legendX + 12, afterMatrix + 17);
       legendX += doc.getTextWidth(label) + 34;
     }
