@@ -155,7 +155,7 @@ export default function AchievementsSection({
         </div>
       </div>
 
-      <p className="text-xs text-slate-400">* Core outcome measure (matches the paper form).</p>
+      <p className="text-xs text-slate-400">* Core outcome measure.</p>
     </div>
   );
 }

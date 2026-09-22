@@ -1,6 +1,5 @@
-// Mirrors the "ACHIEVEMENTS" section of the LVAEP paper form exactly,
-// including the "*" markers the paper form uses (starred items are the
-// federally-reportable core outcome measures).
+// The achievement goals LVAEP tracks, by category. Starred items are the
+// federally-reportable core outcome measures.
 
 export type CategoryKey = "ECONOMIC" | "EDUCATIONAL" | "FAMILY" | "SOCIETAL";
 

@@ -128,7 +128,7 @@ export interface ActionResult {
  * Permanently deletes a student and everything attached to them (attendance
  * entries and achievements cascade). Intended for mistakes and test entries —
  * a student who simply finished tutoring should be marked stopped instead, so
- * their hours stay in the record.
+ * their hours stay in the record for reporting.
  */
 export async function deleteStudent(studentId: string): Promise<ActionResult> {
   const tutorId = getCurrentTutorId();

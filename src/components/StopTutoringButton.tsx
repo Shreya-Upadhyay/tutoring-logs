@@ -56,8 +56,7 @@ export default function StopTutoringButton({
         Mark this student as no longer being tutored
       </p>
       <p className="mb-3 text-xs text-slate-500">
-        This matches the &quot;STOPPED&quot; box on the paper form. Please also notify the office
-        as soon as possible.
+        Please also notify the office as soon as possible.
       </p>
       <label className="label" htmlFor="reason">
         Reason

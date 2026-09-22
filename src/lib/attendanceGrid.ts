@@ -22,7 +22,7 @@ export interface AttendanceGridResult {
   grandTotal: number;
 }
 
-/** Build the Jul-Jun x 1-31 grid for one fiscal year, matching the paper form. */
+/** Build the Jul-Jun x 1-31 attendance grid for one fiscal year. */
 export function buildAttendanceGrid(
   entries: FlatAttendanceEntry[],
   fyLabel: string

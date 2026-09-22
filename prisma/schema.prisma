@@ -1,5 +1,4 @@
 // LVAEP Tutoring Logs — data model
-// Mirrors the "Student Monthly Attendance & Achievement Form" (FY 2026-2027)
 
 generator client {
   provider = "prisma-client-js"
@@ -26,9 +25,9 @@ model Student {
   tutorId   String
   tutor     Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
   name      String
-  site      String? // Tutoring Site
-  days      String? // Day(s)
-  times     String? // Time(s)
+  site      String? // tutoring site
+  days      String? // day(s) they meet
+  times     String? // time(s) they meet
 
   active       Boolean   @default(true)
   stoppedAt    DateTime?

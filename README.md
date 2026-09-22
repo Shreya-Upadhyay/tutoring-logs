@@ -1,9 +1,8 @@
 # LVAEP Tutoring Logs
 
-A web app for Literacy Volunteers of America, Essex/Passaic County that replaces the paper
-"Student Monthly Attendance & Achievement Form" with an online workflow: tutors record
-sessions on a calendar, check off achievement goals, and generate the same monthly
-attendance sheet as a PDF with one click.
+A web app for Literacy Volunteers of America, Essex/Passaic County for recording tutoring
+sessions and student progress: tutors log sessions on a calendar, check off achievement
+goals, and download a monthly attendance sheet as a PDF with one click.
 
 ## Stack
 
@@ -13,22 +12,23 @@ attendance sheet as a PDF with one click.
 - No password auth — tutors pick/create a profile once, remembered in a cookie. This is a
   deliberate simplification for a small internal team tool; see `src/lib/tutorSession.ts`.
 
-## How it maps to the paper form
+## What it does
 
-| Paper form | App |
-|---|---|
-| Tutor / Student header | Tutor profile (onboarding) + Student profile |
-| Contact Information box | Sidebar box on the dashboard |
-| Footer instructions | "Directions for Tutors" sidebar box |
-| Attendance grid (day x month, hours or TA/SA/H) | Calendar entry + auto-generated grid + "Download PDF" |
-| Achievements checklist (A-E categories) | Achievements checklist per student, plus a free-text "Other" list |
-| "STOPPED" box + reason | "Student is no longer being tutored" button at the bottom of a student's page |
-
-Deleting vs. stopping: marking a student **stopped** keeps their hours in the record (what the
-paper form's STOPPED box does). **Deleting** a student is for mistakes and test entries — it
-permanently removes their attendance and achievements, and asks you to type the student's name
-to confirm when there are sessions to lose. Tutor profiles cannot be deleted from the app at
-all — use "Switch tutor profile" to move between them.
+- **Tutor profiles** — a tutor enters their name (plus optional site, days and times) once;
+  the profile stays editable and you can switch between profiles on a shared device.
+- **Students** — create students, search them, and see hours logged this fiscal year at a
+  glance. Each student has their own page.
+- **Attendance** — click a day on the calendar to log hours tutored, or mark Tutor Absent,
+  Student Absent, or Holiday. A Jul-Jun attendance grid builds itself from those entries,
+  with monthly and grand totals, and downloads as a PDF.
+- **Achievements** — a checklist of goals grouped by category (Economic, Educational, Family,
+  Societal/Community), plus a free-text list for anything else. Starred goals are the
+  federally-reportable core outcome measures.
+- **Ending tutoring** — mark a student as no longer being tutored with a reason. Their hours
+  stay in the record for reporting; they can be resumed later.
+- **Deleting** — permanently removes a student and their records. Intended for duplicates,
+  typos and practice entries, so it asks you to type the student's name to confirm when
+  there are sessions to lose. Tutor profiles cannot be deleted.
 
 ## Local development
 
@@ -82,7 +82,7 @@ src/
   components/          UI components (calendar, attendance grid, achievements checklist, ...)
   lib/
     actions.ts         All data mutations (Next.js Server Actions) — the only place writes happen
-    achievementCatalog.ts   The A-E achievement categories/items, copied from the paper form
+    achievementCatalog.ts   The achievement goal categories and items
     attendanceGrid.ts  Turns raw attendance rows into the Jul-Jun x 1-31 grid
     pdf.ts             Client-side PDF generation for the attendance grid
     fiscalYear.ts       Jul-Jun fiscal year helpers
@@ -94,7 +94,7 @@ prisma/schema.prisma   Data model: Tutor, Student, AttendanceEntry, Achievement
 
 - **No per-tutor login/password.** Any tutor with the link can see all students. If you need
   tutors to only see their own students, that requires adding real authentication.
-- **Achievement "attained date"** is set to the day the checkbox is checked, not a
-  user-entered date (the paper form doesn't specify one either).
+- **Achievement "attained date"** is set to the day the checkbox is checked, rather than
+  being entered by hand.
 - **One fiscal year's attendance grid at a time** is shown/downloaded; switch the "Fiscal
   year" dropdown on a student's page to see a different year.

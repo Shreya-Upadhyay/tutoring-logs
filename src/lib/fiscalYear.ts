@@ -1,6 +1,6 @@
-// The paper form runs on a July-June fiscal year (e.g. "FY 2026-2027" = Jul
-// 2026 through Jun 2027). These helpers reproduce that layout so the on-screen
-// and PDF attendance grids match the form tutors already know.
+// Reporting runs on a July-June fiscal year (e.g. "FY 2026-2027" = Jul 2026
+// through Jun 2027). These helpers lay out the on-screen and PDF attendance
+// grids by that year.
 
 export const FY_MONTH_ORDER = [6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5]; // Jul..Jun (0-indexed JS months)
 export const FY_MONTH_LABELS = [
