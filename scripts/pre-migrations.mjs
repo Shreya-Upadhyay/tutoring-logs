@@ -57,6 +57,40 @@ async function splitNameColumns(prisma, table) {
 }
 
 /**
+ * Adds the sign-in columns.
+ *
+ * `prisma db push` cannot do this unattended: adding a UNIQUE constraint to a
+ * table that already holds rows is a change it asks to confirm, so it aborts
+ * in a non-interactive build. Applying the DDL here is explicit, idempotent,
+ * and leaves nothing for the push to do.
+ */
+async function ensureAuthColumns(prisma) {
+  const columns = await columnsOf(prisma, "Tutor");
+  if (columns.length === 0) return "Tutor: table not created yet, nothing to add";
+
+  const added = [];
+
+  if (!columns.includes("email")) {
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Tutor" ADD COLUMN "email" TEXT`);
+    added.push("email");
+  }
+  if (!columns.includes("passwordHash")) {
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Tutor" ADD COLUMN "passwordHash" TEXT`);
+    added.push("passwordHash");
+  }
+
+  // Postgres treats NULLs as distinct, so this holds even while existing rows
+  // have no email yet.
+  await prisma.$executeRawUnsafe(
+    `CREATE UNIQUE INDEX IF NOT EXISTS "Tutor_email_key" ON "Tutor"("email")`
+  );
+
+  return added.length > 0
+    ? `Tutor: added ${added.join(", ")} and the unique email index`
+    : "Tutor: sign-in columns already present";
+}
+
+/**
  * Removes accounts that have no password. Those are accounts from before
  * sign-in existed; the program starts fresh from sign-up instead of carrying
  * them forward. Their students, attendance and achievements cascade with them.
@@ -95,6 +129,7 @@ export async function runPreMigrations(connectionString) {
     for (const table of ["Tutor", "Student"]) {
       console.log(`[pre-migrations] ${await splitNameColumns(prisma, table)}`);
     }
+    console.log(`[pre-migrations] ${await ensureAuthColumns(prisma)}`);
   } finally {
     await prisma.$disconnect();
   }
