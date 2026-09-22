@@ -7,6 +7,7 @@ import { initials, avatarClass } from "@/lib/avatarColor";
 import AttendanceSection from "@/components/AttendanceSection";
 import AchievementsSection from "@/components/AchievementsSection";
 import StopTutoringButton from "@/components/StopTutoringButton";
+import DeleteStudentButton from "@/components/DeleteStudentButton";
 
 export const dynamic = "force-dynamic";
 
@@ -109,11 +110,23 @@ export default async function StudentPage({ params }: { params: { id: string } }
         </details>
       </div>
 
-      <div className="mt-8 border-t border-slate-200 pt-6">
+      <div className="mt-8 space-y-6 border-t border-slate-200 pt-6">
         <StopTutoringButton
           studentId={student.id}
           active={student.active}
           stoppedReason={student.stoppedReason}
+        />
+
+        <DeleteStudentButton
+          studentId={student.id}
+          studentName={student.name}
+          sessionCount={student.attendance.length}
+          totalHours={
+            Math.round(
+              student.attendance.reduce((sum, a) => sum + (a.hours ?? 0), 0) * 10
+            ) / 10
+          }
+          achievementCount={student.achievements.filter((a) => a.attained).length}
         />
       </div>
     </main>

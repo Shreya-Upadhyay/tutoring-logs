@@ -24,6 +24,12 @@ attendance sheet as a PDF with one click.
 | Achievements checklist (A-E categories) | Achievements checklist per student, plus a free-text "Other" list |
 | "STOPPED" box + reason | "Student is no longer being tutored" button at the bottom of a student's page |
 
+Deleting vs. stopping: marking a student **stopped** keeps their hours in the record (what the
+paper form's STOPPED box does). **Deleting** a student is for mistakes and test entries — it
+permanently removes their attendance and achievements, and asks you to type the student's name
+to confirm when there are sessions to lose. A tutor profile can only be deleted once it has no
+students.
+
 ## Local development
 
 1. Get a Postgres connection string. Easiest free option: [neon.tech](https://neon.tech) — create

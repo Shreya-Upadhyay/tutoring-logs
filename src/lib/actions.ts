@@ -119,6 +119,60 @@ export async function updateStudentProfile(studentId: string, formData: FormData
   revalidatePath(`/students/${studentId}`);
 }
 
+export interface ActionResult {
+  ok: boolean;
+  message?: string;
+}
+
+/**
+ * Permanently deletes a student and everything attached to them (attendance
+ * entries and achievements cascade). Intended for mistakes and test entries —
+ * a student who simply finished tutoring should be marked stopped instead, so
+ * their hours stay in the record.
+ */
+export async function deleteStudent(studentId: string): Promise<ActionResult> {
+  const tutorId = getCurrentTutorId();
+  if (!tutorId) return { ok: false, message: "No tutor profile is active." };
+
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { tutorId: true },
+  });
+
+  if (!student) return { ok: false, message: "That student no longer exists." };
+  if (student.tutorId !== tutorId) {
+    return { ok: false, message: "That student belongs to a different tutor profile." };
+  }
+
+  await prisma.student.delete({ where: { id: studentId } });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
+/**
+ * Deletes a tutor profile. Refuses while the tutor still has students, so
+ * this can't silently wipe out a term's worth of attendance records.
+ */
+export async function deleteTutor(tutorId: string): Promise<ActionResult> {
+  const studentCount = await prisma.student.count({ where: { tutorId } });
+
+  if (studentCount > 0) {
+    return {
+      ok: false,
+      message: `This profile still has ${studentCount} student${
+        studentCount === 1 ? "" : "s"
+      }. Delete them first (from each student's page) if you really want to remove this profile.`,
+    };
+  }
+
+  await prisma.tutor.delete({ where: { id: tutorId } });
+  clearTutorCookie();
+
+  revalidatePath("/");
+  redirect("/onboarding");
+}
+
 export async function markStudentStopped(studentId: string, formData: FormData): Promise<void> {
   const reason = str(formData, "reason");
 
