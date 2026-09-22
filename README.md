@@ -9,13 +9,22 @@ goals, and download a monthly attendance sheet as a PDF with one click.
 - **Next.js 14** (App Router) + **TypeScript** + **Tailwind CSS**
 - **Prisma** ORM on **PostgreSQL** (works with Vercel Postgres, Neon, or Supabase)
 - **jsPDF** for client-side attendance-sheet PDF export
-- No password auth — tutors pick/create a profile once, remembered in a cookie. This is a
-  deliberate simplification for a small internal team tool; see `src/lib/tutorSession.ts`.
+- No password auth — people register once and their account is remembered in a cookie. This
+  is a deliberate simplification for a small internal team tool; see `src/lib/tutorSession.ts`.
 
 ## What it does
 
+- **Monthly and annual reports** — `/reports` is the reporting surface the program runs on.
+  Pick **Monthly** and a month, or **Yearly** and a fiscal year (July–June), and the report
+  shows students served, sessions, total hours, goals met, per-tutor subtotals and a
+  per-student breakdown (a Jul–Jun hours grid in the yearly view), downloadable as a PDF.
+  Tutors see their own students; staff see the whole program or one tutor at a time.
+- **Two kinds of account** — register as a **tutor** (records sessions for your own students)
+  or as **LVAEP staff** (sees every tutor, their students, and all reports, but cannot change
+  anything). Staff land one layer up: a list of tutors, each opening onto that tutor's
+  students.
 - **Tutor profiles** — a tutor enters their name (plus optional site, days and times) once;
-  the profile stays editable and you can switch between profiles on a shared device.
+  the profile stays editable and you can switch between accounts on a shared device.
 - **Students** — create students with a first and last name, search by either, and see hours
   logged this fiscal year at a glance. Each student has their own page.
 - **Attendance** — click a day on the calendar to log hours tutored, or mark Tutor Absent,
@@ -85,7 +94,11 @@ src/
   app/                 Pages (App Router) — dashboard, onboarding, profile, student detail
   components/          UI components (calendar, attendance grid, achievements checklist, ...)
   lib/
-    actions.ts         All data mutations (Next.js Server Actions) — the only place writes happen
+    actions.ts         All data mutations (Next.js Server Actions) — the only place writes
+                       happen, and where the role/ownership guards live
+    reports.ts         Monthly/annual aggregation (pure functions)
+    reportPdf.ts       Report PDF rendering
+    account.ts         Current account + role helpers (requireAccount / requireTutorAccount)
     achievementCatalog.ts   The achievement goal categories and items
     attendanceTypes.ts  Labels, codes and colours for each kind of attendance entry
     personName.ts       first/last name formatting helpers
@@ -98,10 +111,23 @@ scripts/db-setup.mjs   Applies the schema during the build
 scripts/pre-migrations.mjs  Data migrations that must run before the schema is applied
 ```
 
+## Roles and the staff access code
+
+Registering as LVAEP staff can be gated behind a shared code: set a `STAFF_ACCESS_CODE`
+environment variable in Vercel and the staff option requires it. Leave it unset and anyone
+can register as staff.
+
+Be aware of what this is and is not. Staff being **view-only is enforced on the server** —
+every write checks the role, and tutors can only touch their own students, so no
+hand-crafted request gets around it. But because there are no passwords, the *identity* side
+is honour-system: anyone with the link can pick up an existing account on the "already
+registered" list. That is fine for a small internal team; it is not suitable if student
+records need to be private from other tutors. Adding real accounts with passwords would fix
+that and is the natural next step if LVAEP needs it.
+
 ## Known simplifications (flagging for LVAEP staff)
 
-- **No per-tutor login/password.** Any tutor with the link can see all students. If you need
-  tutors to only see their own students, that requires adding real authentication.
+- **No passwords.** See the section above — accounts are chosen, not authenticated.
 - **Achievement "attained date"** is set to the day the checkbox is checked, rather than
   being entered by hand.
 - **One fiscal year's attendance grid at a time** is shown/downloaded; switch the "Fiscal

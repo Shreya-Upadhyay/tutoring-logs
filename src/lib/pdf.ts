@@ -3,9 +3,7 @@ import autoTable from "jspdf-autotable";
 import { format as formatDate } from "date-fns";
 import type { AttendanceGridResult } from "@/lib/attendanceGrid";
 import { ATTENDANCE_TYPES, ATTENDANCE_TYPE_LIST, typeFromCode } from "@/lib/attendanceTypes";
-
-const BRAND: [number, number, number] = [47, 99, 245];
-const MARGIN = 40;
+import { BRAND, MARGIN, lastY, renderHeading, fileSafe } from "@/lib/pdfShared";
 
 export interface AchievementForPdf {
   categoryLetter: string;
@@ -24,21 +22,6 @@ export interface StudentPdfDetails {
   times: string | null;
   active: boolean;
   stoppedReason: string | null;
-}
-
-function lastY(doc: jsPDF, fallback: number): number {
-  const table = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable;
-  return table?.finalY ?? fallback;
-}
-
-function renderHeading(doc: jsPDF, subtitle: string): number {
-  doc.setFontSize(14);
-  doc.setFont("helvetica", "bold");
-  doc.text("Literacy Volunteers of America, Essex/Passaic County", MARGIN, 36);
-  doc.setFontSize(11);
-  doc.text(subtitle, MARGIN, 54);
-  doc.setFont("helvetica", "normal");
-  return 54;
 }
 
 function renderDetails(doc: jsPDF, details: StudentPdfDetails, startY: number): number {
@@ -219,10 +202,6 @@ function renderAchievementsTable(
   doc.setTextColor(0, 0, 0);
 
   return y + 16;
-}
-
-function fileSafe(name: string): string {
-  return name.replace(/[^a-z0-9]+/gi, "_");
 }
 
 /** Attendance grid for one fiscal year. */

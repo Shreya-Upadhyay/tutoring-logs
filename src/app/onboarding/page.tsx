@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { createTutor, pickTutor } from "@/lib/actions";
+import { pickTutor } from "@/lib/actions";
 import { getCurrentTutorId } from "@/lib/tutorSession";
 import { fullName } from "@/lib/personName";
 import { redirect } from "next/navigation";
+import RegistrationForm from "@/components/RegistrationForm";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +14,8 @@ export default async function OnboardingPage() {
     if (existing) redirect("/");
   }
 
-  const tutors = await prisma.tutor.findMany({
-    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+  const accounts = await prisma.tutor.findMany({
+    orderBy: [{ role: "asc" }, { lastName: "asc" }, { firstName: "asc" }],
   });
 
   return (
@@ -26,70 +27,23 @@ export default async function OnboardingPage() {
         </p>
       </div>
 
-      <div className="card p-6">
-        <h2 className="mb-4 text-lg font-semibold">Set up your tutor profile</h2>
-        <form action={createTutor} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label" htmlFor="firstName">
-                First name *
-              </label>
-              <input
-                id="firstName"
-                name="firstName"
-                className="input"
-                required
-                placeholder="Jane"
-              />
-            </div>
-            <div>
-              <label className="label" htmlFor="lastName">
-                Last name
-              </label>
-              <input id="lastName" name="lastName" className="input" placeholder="Smith" />
-            </div>
-          </div>
-          <div>
-            <label className="label" htmlFor="site">
-              Tutoring site (optional)
-            </label>
-            <input
-              id="site"
-              name="site"
-              className="input"
-              placeholder="Bloomfield Public Library"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label" htmlFor="days">
-                Day(s) (optional)
-              </label>
-              <input id="days" name="days" className="input" placeholder="Tue & Thu" />
-            </div>
-            <div>
-              <label className="label" htmlFor="times">
-                Time(s) (optional)
-              </label>
-              <input id="times" name="times" className="input" placeholder="4:00 - 5:30 PM" />
-            </div>
-          </div>
-          <button type="submit" className="btn-primary w-full">
-            Continue
-          </button>
-        </form>
-      </div>
+      <RegistrationForm staffCodeRequired={Boolean(process.env.STAFF_ACCESS_CODE)} />
 
-      {tutors.length > 0 && (
+      {accounts.length > 0 && (
         <div className="mt-6 card p-4">
           <p className="mb-2 text-sm font-medium text-slate-600">
-            Already have a profile? Pick it up on this device:
+            Already registered? Pick up your account on this device:
           </p>
           <div className="flex flex-wrap gap-2">
-            {tutors.map((t) => (
-              <form key={t.id} action={pickTutor.bind(null, t.id)}>
+            {accounts.map((account) => (
+              <form key={account.id} action={pickTutor.bind(null, account.id)}>
                 <button type="submit" className="btn-secondary">
-                  {fullName(t)}
+                  {fullName(account)}
+                  {account.role === "STAFF" && (
+                    <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-600">
+                      Staff
+                    </span>
+                  )}
                 </button>
               </form>
             ))}

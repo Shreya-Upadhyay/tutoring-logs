@@ -1,13 +1,11 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getCurrentTutorId } from "@/lib/tutorSession";
+import { requireTutorAccount } from "@/lib/account";
 import { createStudent } from "@/lib/actions";
 
 export const dynamic = "force-dynamic";
 
-export default function NewStudentPage() {
-  const tutorId = getCurrentTutorId();
-  if (!tutorId) redirect("/onboarding");
+export default async function NewStudentPage() {
+  await requireTutorAccount();
 
   return (
     <main className="mx-auto max-w-lg px-4 py-10">

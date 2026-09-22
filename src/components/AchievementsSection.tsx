@@ -19,10 +19,13 @@ export default function AchievementsSection({
   studentId,
   details,
   achievements,
+  readOnly = false,
 }: {
   studentId: string;
   details: StudentPdfDetails;
   achievements: AchievementDTO[];
+  /** Staff accounts can read the checklist but not change it. */
+  readOnly?: boolean;
 }) {
   const [items, setItems] = useState(achievements);
   const [, startTransition] = useTransition();
@@ -105,11 +108,16 @@ export default function AchievementsSection({
               const checked = record?.attained ?? false;
               return (
                 <li key={item.key}>
-                  <label className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50">
+                  <label
+                    className={`flex items-start gap-2 rounded-lg px-2 py-1.5 text-sm ${
+                      readOnly ? "" : "cursor-pointer hover:bg-slate-50"
+                    }`}
+                  >
                     <input
                       type="checkbox"
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 disabled:opacity-60"
                       checked={checked}
+                      disabled={readOnly}
                       onChange={() => record && toggle(record.id, checked)}
                     />
                     <span className={checked ? "text-slate-500 line-through" : "text-slate-700"}>
@@ -137,17 +145,19 @@ export default function AchievementsSection({
                 </span>
                 {item.label}
               </span>
-              <button
-                type="button"
-                onClick={() => handleDeleteOther(item.id)}
-                className="text-xs text-red-500 hover:underline"
-              >
-                Remove
-              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteOther(item.id)}
+                  className="text-xs text-red-500 hover:underline"
+                >
+                  Remove
+                </button>
+              )}
             </li>
           ))}
         </ul>
-        <div className="flex gap-2">
+        <div className={`flex gap-2 ${readOnly ? "hidden" : ""}`}>
           <input
             className="input"
             placeholder="Describe another achievement..."

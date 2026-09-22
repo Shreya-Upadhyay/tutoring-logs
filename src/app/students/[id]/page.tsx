@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentTutorId } from "@/lib/tutorSession";
+import { requireAccount, isStaff } from "@/lib/account";
 import { updateStudentProfile } from "@/lib/actions";
 import { avatarClass } from "@/lib/avatarColor";
 import { fullName, initialsOf } from "@/lib/personName";
@@ -15,8 +15,8 @@ import type { StudentPdfDetails } from "@/lib/pdf";
 export const dynamic = "force-dynamic";
 
 export default async function StudentPage({ params }: { params: { id: string } }) {
-  const tutorId = getCurrentTutorId();
-  if (!tutorId) redirect("/onboarding");
+  const account = await requireAccount();
+  const staff = isStaff(account);
 
   const student = await prisma.student.findUnique({
     where: { id: params.id },
@@ -28,6 +28,9 @@ export default async function StudentPage({ params }: { params: { id: string } }
   });
 
   if (!student) notFound();
+
+  // Staff may read any student; a tutor may only reach their own.
+  if (!staff && student.tutorId !== account.id) notFound();
 
   const updateWithId = updateStudentProfile.bind(null, student.id);
   const studentName = fullName(student);
@@ -83,6 +86,11 @@ export default async function StudentPage({ params }: { params: { id: string } }
             </p>
             <p className="mt-0.5 text-xs text-slate-400">Tutor: {details.tutorName}</p>
           </div>
+          {staff ? (
+            <span className="flex-shrink-0 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-500">
+              View only
+            </span>
+          ) : (
           <details className="flex-shrink-0">
             <summary className="cursor-pointer select-none list-none rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200">
               Edit details
@@ -124,6 +132,7 @@ export default async function StudentPage({ params }: { params: { id: string } }
               </button>
             </form>
           </details>
+          )}
         </div>
 
         <div className="mt-4 flex justify-end border-t border-slate-100 pt-4">
@@ -149,6 +158,7 @@ export default async function StudentPage({ params }: { params: { id: string } }
               studentId={student.id}
               details={details}
               entries={attendanceEntries}
+              readOnly={staff}
             />
           </div>
         </details>
@@ -162,11 +172,20 @@ export default async function StudentPage({ params }: { params: { id: string } }
               studentId={student.id}
               details={details}
               achievements={achievements}
+              readOnly={staff}
             />
           </div>
         </details>
       </div>
 
+      {staff ? (
+        !student.active && (
+          <div className="mt-8 card border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <span className="font-semibold">This student is no longer being tutored.</span>
+            {student.stoppedReason && <> Reason: {student.stoppedReason}</>}
+          </div>
+        )
+      ) : (
       <div className="mt-8 space-y-6 border-t border-slate-200 pt-6">
         <StopTutoringButton
           studentId={student.id}
@@ -184,6 +203,7 @@ export default async function StudentPage({ params }: { params: { id: string } }
           achievementCount={student.achievements.filter((a) => a.attained).length}
         />
       </div>
+      )}
     </main>
   );
 }

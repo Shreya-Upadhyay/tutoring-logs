@@ -20,10 +20,13 @@ export default function AttendanceSection({
   studentId,
   details,
   entries,
+  readOnly = false,
 }: {
   studentId: string;
   details: StudentPdfDetails;
   entries: AttendanceEntryDTO[];
+  /** Staff accounts can read the record but not change it. */
+  readOnly?: boolean;
 }) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
@@ -62,7 +65,37 @@ export default function AttendanceSection({
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-[320px_1fr]">
         <Calendar marks={marks} onSelectDate={setSelectedDate} selectedDate={selectedDate} />
-        {selectedDate ? (
+        {readOnly ? (
+          <div className="card p-6 text-sm text-slate-600">
+            {selectedDate ? (
+              <>
+                <p className="font-semibold text-slate-900">
+                  {selectedDate.toLocaleDateString(undefined, {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </p>
+                <p className="mt-1">
+                  {existingForSelected
+                    ? existingForSelected.type === "HOURS"
+                      ? `${existingForSelected.hours} hours tutored`
+                      : ATTENDANCE_TYPES[existingForSelected.type].label
+                    : "Nothing recorded for this day."}
+                </p>
+                {existingForSelected?.notes && (
+                  <p className="mt-1 text-slate-500">{existingForSelected.notes}</p>
+                )}
+              </>
+            ) : (
+              <p className="text-center text-slate-500">
+                Click a day to see what was recorded. Only the tutor who holds the sessions can
+                change these entries.
+              </p>
+            )}
+          </div>
+        ) : selectedDate ? (
           <AttendanceEntryForm
             studentId={studentId}
             date={selectedDate}

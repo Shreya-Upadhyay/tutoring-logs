@@ -9,8 +9,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  TUTOR
+  STAFF // LVAEP staff: can view every tutor and student, but cannot edit anything
+}
+
+/// Every person who signs in. Tutors own students; STAFF accounts own none and
+/// have read-only visibility across the whole program.
 model Tutor {
   id        String    @id @default(cuid())
+  role      UserRole  @default(TUTOR)
   firstName String
   lastName  String? // optional so single-name entries are still possible
   site      String? // tutoring site / location
