@@ -19,6 +19,10 @@ enum UserRole {
 model Tutor {
   id        String    @id @default(cuid())
   role      UserRole  @default(TUTOR)
+  // Nullable so accounts created before passwords existed still load; those
+  // accounts finish setting up via the claim flow on the login page.
+  email        String? @unique
+  passwordHash String?
   firstName String
   lastName  String? // optional so single-name entries are still possible
   site      String? // tutoring site / location

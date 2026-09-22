@@ -2,7 +2,7 @@
 // objects so the same logic serves the on-screen table and the PDF.
 
 import { FY_MONTH_ORDER, fiscalYearStartYear } from "@/lib/fiscalYear";
-import type { AttendanceTypeKey } from "@/lib/attendanceTypes";
+import { cellDisplay, type AttendanceTypeKey } from "@/lib/attendanceTypes";
 
 export interface ReportAttendanceInput {
   date: string; // ISO
@@ -191,5 +191,58 @@ export function buildReport(students: ReportStudentInput[], period: ReportPeriod
     tutorSubtotals: Array.from(byTutor.values()).sort((a, b) =>
       a.tutorName.localeCompare(b.tutorName)
     ),
+  };
+}
+
+export interface MonthMatrixRow {
+  studentId: string;
+  studentName: string;
+  /** One entry per day of the month (index 0 = the 1st); "" when nothing logged. */
+  cells: string[];
+  total: number;
+}
+
+/**
+ * A month's attendance as one spreadsheet: students down the side, days of the
+ * month across. This is the view staff want attached to a monthly report.
+ */
+export function buildMonthMatrix(
+  students: ReportStudentInput[],
+  year: number,
+  monthIndex: number
+): { rows: MonthMatrixRow[]; daysInMonth: number; dayTotals: number[]; grandTotal: number } {
+  const days = new Date(year, monthIndex + 1, 0).getDate();
+  const dayTotals = Array(days).fill(0);
+
+  const rows = students.map((student) => {
+    const cells: string[] = Array(days).fill("");
+    let total = 0;
+
+    for (const entry of student.attendance) {
+      const date = new Date(entry.date);
+      if (date.getFullYear() !== year || date.getMonth() !== monthIndex) continue;
+
+      const dayIndex = date.getDate() - 1;
+      cells[dayIndex] = cellDisplay(entry.type, entry.hours);
+
+      if (entry.type === "HOURS") {
+        total += entry.hours ?? 0;
+        dayTotals[dayIndex] += entry.hours ?? 0;
+      }
+    }
+
+    return {
+      studentId: student.id,
+      studentName: student.studentName,
+      cells,
+      total: round(total),
+    };
+  });
+
+  return {
+    rows,
+    daysInMonth: days,
+    dayTotals: dayTotals.map(round),
+    grandTotal: round(dayTotals.reduce((a, b) => a + b, 0)),
   };
 }

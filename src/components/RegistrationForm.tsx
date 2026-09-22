@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createTutor } from "@/lib/actions";
+import { signUp } from "@/lib/actions";
 
 type Role = "TUTOR" | "STAFF";
 
@@ -17,15 +17,14 @@ export default function RegistrationForm({ staffCodeRequired }: { staffCodeRequi
     setError(null);
 
     startTransition(async () => {
-      const result = await createTutor(formData);
+      const result = await signUp(formData);
       if (result && !result.ok) setError(result.message ?? "Could not register.");
     });
   }
 
   return (
-    <div className="card p-6">
-      <h2 className="mb-1 text-lg font-semibold">Register</h2>
-      <p className="mb-4 text-sm text-slate-500">Which describes you?</p>
+    <div>
+      <p className="label">Which describes you?</p>
 
       <div className="mb-5 grid grid-cols-2 gap-2">
         <RoleOption
@@ -57,6 +56,53 @@ export default function RegistrationForm({ staffCodeRequired }: { staffCodeRequi
             <input id="lastName" name="lastName" className="input" placeholder="Smith" />
           </div>
         </div>
+
+        <div>
+          <label className="label" htmlFor="email">
+            Email *
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            className="input"
+            required
+            autoComplete="email"
+            placeholder="you@example.com"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label" htmlFor="password">
+              Password *
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              className="input"
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="confirmPassword">
+              Confirm password *
+            </label>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              className="input"
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
+          </div>
+        </div>
+        <p className="-mt-2 text-xs text-slate-500">At least 8 characters.</p>
 
         {role === "TUTOR" ? (
           <>
@@ -114,7 +160,7 @@ export default function RegistrationForm({ staffCodeRequired }: { staffCodeRequi
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <button type="submit" className="btn-primary w-full" disabled={pending}>
-          {pending ? "Setting up..." : "Continue"}
+          {pending ? "Creating account..." : "Create account"}
         </button>
       </form>
     </div>

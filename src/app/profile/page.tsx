@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentTutorId } from "@/lib/tutorSession";
-import { updateTutor, switchTutor } from "@/lib/actions";
+import { updateTutor, logOut } from "@/lib/actions";
 import { redirect } from "next/navigation";
+import ChangePasswordForm from "@/components/ChangePasswordForm";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,8 @@ export default async function ProfilePage() {
       </Link>
 
       <div className="card p-6">
-        <h1 className="mb-4 text-xl font-semibold">Edit your tutor profile</h1>
+        <h1 className="text-xl font-semibold">Edit your profile</h1>
+        <p className="mb-4 mt-0.5 text-sm text-slate-500">{tutor.email ?? "No email on file"}</p>
         <form action={updateWithId} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -75,9 +77,14 @@ export default async function ProfilePage() {
         </form>
       </div>
 
-      <form action={switchTutor} className="mt-4">
+      <div className="mt-4 card p-6">
+        <h2 className="mb-4 text-lg font-semibold">Password</h2>
+        <ChangePasswordForm />
+      </div>
+
+      <form action={logOut} className="mt-4">
         <button type="submit" className="btn-secondary w-full">
-          Switch tutor profile
+          Log out
         </button>
       </form>
     </main>

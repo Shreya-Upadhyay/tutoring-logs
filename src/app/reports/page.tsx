@@ -4,6 +4,8 @@ import { requireAccount, isStaff } from "@/lib/account";
 import { fullName } from "@/lib/personName";
 import { fiscalYearOf, FY_MONTH_LABELS } from "@/lib/fiscalYear";
 import { buildReport, type ReportPeriod, type ReportStudentInput } from "@/lib/reports";
+import { toAchievementPdfRows } from "@/lib/achievementsPdfData";
+import type { ReportStudentSection } from "@/lib/reportPdf";
 import ReportControls from "@/components/ReportControls";
 
 export const dynamic = "force-dynamic";
@@ -69,8 +71,41 @@ export default async function ReportsPage({
       .map((a) => (a.attainedAt ? a.attainedAt.toISOString() : null)),
   }));
 
-  const report = buildReport(inputs, period);
+  // An optional single-student scope, so one student's report can be produced
+  // on its own rather than the whole caseload.
+  const studentScope = searchParams.student && searchParams.student !== "all"
+    ? searchParams.student
+    : null;
+  const scopedStudents = studentScope
+    ? students.filter((s) => s.id === studentScope)
+    : students;
+  const scopedInputs = studentScope
+    ? inputs.filter((i) => i.id === studentScope)
+    : inputs;
+
+  const report = buildReport(scopedInputs, period);
   const isYearly = period.kind === "year";
+
+  // Attendance + goals pages appended to the PDF, one set per student in scope.
+  const sections: ReportStudentSection[] = scopedStudents.map((student) => ({
+    studentId: student.id,
+    studentName: fullName(student),
+    tutorName: fullName(student.tutor),
+    entries: student.attendance.map((a) => ({
+      date: a.date.toISOString(),
+      type: a.type,
+      hours: a.hours,
+    })),
+    achievements: toAchievementPdfRows(
+      student.achievements.map((a) => ({
+        itemKey: a.itemKey,
+        label: a.label,
+        category: a.category,
+        attained: a.attained,
+        attainedAt: a.attainedAt ? a.attainedAt.toISOString() : null,
+      }))
+    ),
+  }));
 
   // Fiscal years present in the data, so the picker only offers real options.
   const allDates = students.flatMap((s) => s.attendance.map((a) => a.date));
@@ -82,11 +117,17 @@ export default async function ReportsPage({
     staff && searchParams.tutor && searchParams.tutor !== "all"
       ? tutors.find((t) => t.id === searchParams.tutor)
       : null;
-  const scopeLabel = staff
+  const scopedStudent = studentScope
+    ? students.find((s) => s.id === studentScope)
+    : null;
+  const tutorScopeLabel = staff
     ? scopeTutor
       ? `Tutor: ${fullName(scopeTutor)}`
       : "All tutors"
     : `Tutor: ${fullName(account)}`;
+  const scopeLabel = scopedStudent
+    ? `${tutorScopeLabel} — ${fullName(scopedStudent)} only`
+    : tutorScopeLabel;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
@@ -108,6 +149,9 @@ export default async function ReportsPage({
         scopeLabel={scopeLabel}
         fiscalYears={fiscalYears}
         tutorOptions={staff ? tutors.map((t) => ({ id: t.id, name: fullName(t) })) : null}
+        studentOptions={students.map((s) => ({ id: s.id, name: fullName(s) }))}
+        sections={sections}
+        studentInputs={scopedInputs}
       />
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

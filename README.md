@@ -9,17 +9,23 @@ goals, and download a monthly attendance sheet as a PDF with one click.
 - **Next.js 14** (App Router) + **TypeScript** + **Tailwind CSS**
 - **Prisma** ORM on **PostgreSQL** (works with Vercel Postgres, Neon, or Supabase)
 - **jsPDF** for client-side attendance-sheet PDF export
-- No password auth — people register once and their account is remembered in a cookie. This
-  is a deliberate simplification for a small internal team tool; see `src/lib/tutorSession.ts`.
+- Password sign-in — scrypt hashes from Node's standard library (`src/lib/password.ts`) and an
+  HMAC-signed session cookie (`src/lib/tutorSession.ts`), so no auth dependency to keep current.
 
 ## What it does
 
 - **Monthly and annual reports** — `/reports` is the reporting surface the program runs on.
   Pick **Monthly** and a month, or **Yearly** and a fiscal year (July–June), and the report
   shows students served, sessions, total hours, goals met, per-tutor subtotals and a
-  per-student breakdown (a Jul–Jun hours grid in the yearly view), downloadable as a PDF.
-  Tutors see their own students; staff see the whole program or one tutor at a time.
-- **Two kinds of account** — register as a **tutor** (records sessions for your own students)
+  per-student breakdown (a Jul–Jun hours grid in the yearly view). Tutors see their own
+  students; staff see the whole program or one tutor at a time. A **Students** dropdown
+  covers all students by default, or narrows the report to one.
+- **The report PDF is the full package** — the summary tables, then the attendance
+  spreadsheet for the period (students down the side, days of the month across; a full
+  Jul–Jun daily grid per student for annual reports), then each student's goals checklist.
+- **Sign up / log in** — separate pages, with an email and password (minimum 8 characters).
+  Passwords can be changed from the profile page.
+- **Two kinds of account** — sign up as a **tutor** (records sessions for your own students)
   or as **LVAEP staff** (sees every tutor, their students, and all reports, but cannot change
   anything). Staff land one layer up: a list of tutors, each opening onto that tutor's
   students.
@@ -96,7 +102,8 @@ src/
   lib/
     actions.ts         All data mutations (Next.js Server Actions) — the only place writes
                        happen, and where the role/ownership guards live
-    reports.ts         Monthly/annual aggregation (pure functions)
+    reports.ts         Monthly/annual aggregation and the month attendance matrix
+    password.ts        scrypt password hashing and email helpers
     reportPdf.ts       Report PDF rendering
     account.ts         Current account + role helpers (requireAccount / requireTutorAccount)
     achievementCatalog.ts   The achievement goal categories and items
@@ -111,23 +118,27 @@ scripts/db-setup.mjs   Applies the schema during the build
 scripts/pre-migrations.mjs  Data migrations that must run before the schema is applied
 ```
 
-## Roles and the staff access code
+## Accounts, roles and environment variables
 
-Registering as LVAEP staff can be gated behind a shared code: set a `STAFF_ACCESS_CODE`
-environment variable in Vercel and the staff option requires it. Leave it unset and anyone
-can register as staff.
+- `STAFF_ACCESS_CODE` — when set, signing up as LVAEP staff requires this code. Leave it
+  unset and anyone can sign up as staff.
+- `AUTH_SECRET` — key used to sign session cookies. Set it to any long random string. If it
+  is missing the app falls back to `DATABASE_URL` (also secret and stable), so sessions are
+  still signed; setting it explicitly is better because rotating the database URL then
+  doesn't log everyone out.
 
-Be aware of what this is and is not. Staff being **view-only is enforced on the server** —
-every write checks the role, and tutors can only touch their own students, so no
-hand-crafted request gets around it. But because there are no passwords, the *identity* side
-is honour-system: anyone with the link can pick up an existing account on the "already
-registered" list. That is fine for a small internal team; it is not suitable if student
-records need to be private from other tutors. Adding real accounts with passwords would fix
-that and is the natural next step if LVAEP needs it.
+Staff accounts are **view-only, enforced on the server**: every write checks the role, and
+tutors can only touch their own students, so a hand-crafted request cannot get around it.
+
+**Accounts created before passwords existed** have no email or password. The login page
+lists them under "Finish setting up an older account" so the owner can add an email and
+password without losing the students already recorded. Anyone could claim one of those while
+it sits unclaimed, so set them up promptly — once claimed, an account needs its password.
 
 ## Known simplifications (flagging for LVAEP staff)
 
-- **No passwords.** See the section above — accounts are chosen, not authenticated.
+- **No password reset by email.** Passwords can be changed from the profile page while
+  logged in, but a forgotten password needs a hand fix in the database.
 - **Achievement "attained date"** is set to the day the checkbox is checked, rather than
   being entered by hand.
 - **One fiscal year's attendance grid at a time** is shown/downloaded; switch the "Fiscal

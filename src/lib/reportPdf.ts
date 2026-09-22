@@ -3,10 +3,29 @@ import autoTable from "jspdf-autotable";
 import { format as formatDate } from "date-fns";
 import { BRAND, MARGIN, MUTED, lastY, renderHeading, fileSafe } from "@/lib/pdfShared";
 import { FY_MONTH_LABELS } from "@/lib/fiscalYear";
-import type { ReportData } from "@/lib/reports";
+import { buildMonthMatrix, type ReportData, type ReportStudentInput } from "@/lib/reports";
+import { buildAttendanceGrid, type FlatAttendanceEntry } from "@/lib/attendanceGrid";
+import { ATTENDANCE_TYPES, ATTENDANCE_TYPE_LIST, typeFromCode } from "@/lib/attendanceTypes";
+import { renderAttendanceTable, renderAchievementsTable, type AchievementForPdf } from "@/lib/pdf";
 
-export function downloadReportPdf(opts: { report: ReportData; scopeLabel: string }) {
-  const { report, scopeLabel } = opts;
+/** Everything needed to append a student's own attendance and goals pages. */
+export interface ReportStudentSection {
+  studentId: string;
+  studentName: string;
+  tutorName: string;
+  entries: FlatAttendanceEntry[];
+  achievements: AchievementForPdf[];
+}
+
+export function downloadReportPdf(opts: {
+  report: ReportData;
+  scopeLabel: string;
+  /** Per-student attendance + goals pages, already scoped to the chosen students. */
+  sections?: ReportStudentSection[];
+  /** Raw inputs, used to build the month attendance spreadsheet. */
+  studentInputs?: ReportStudentInput[];
+}) {
+  const { report, scopeLabel, sections = [], studentInputs = [] } = opts;
   const isYearly = report.period.kind === "year";
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "letter" });
 
@@ -159,6 +178,101 @@ export function downloadReportPdf(opts: { report: ReportData; scopeLabel: string
       afterTable + 16
     );
     doc.setTextColor(0, 0, 0);
+  }
+
+  // --- Attendance spreadsheet for the month (students down, days across) ---
+  if (report.period.kind === "month" && studentInputs.length > 0) {
+    const matrix = buildMonthMatrix(
+      studentInputs,
+      report.period.year,
+      report.period.monthIndex
+    );
+
+    doc.addPage();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(`Attendance — ${report.periodLabel}`, MARGIN, 40);
+    doc.setFont("helvetica", "normal");
+
+    const dayHeaders = Array.from({ length: matrix.daysInMonth }, (_, i) => String(i + 1));
+    const matrixBody: string[][] = matrix.rows.map((row) => [
+      row.studentName,
+      ...row.cells,
+      row.total ? String(row.total) : "",
+    ]);
+    matrixBody.push([
+      "Total",
+      ...matrix.dayTotals.map((t) => (t ? String(t) : "")),
+      String(matrix.grandTotal),
+    ]);
+    const matrixTotalRow = matrixBody.length - 1;
+
+    autoTable(doc, {
+      head: [["Student", ...dayHeaders, "Hours"]],
+      body: matrixBody,
+      startY: 52,
+      styles: { fontSize: 6.5, cellPadding: 1.5, halign: "center", overflow: "hidden" },
+      headStyles: { fillColor: BRAND, fontSize: 6.5 },
+      columnStyles: { 0: { halign: "left", fontStyle: "bold", cellWidth: 92, fontSize: 7 } },
+      margin: { left: MARGIN, right: MARGIN },
+      didParseCell: (data) => {
+        if (data.section !== "body") return;
+        if (data.row.index === matrixTotalRow) {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fillColor = [238, 244, 255];
+          return;
+        }
+        if (data.column.index === 0) return;
+        const type = typeFromCode(String(data.cell.raw ?? ""));
+        if (type) {
+          data.cell.styles.fillColor = ATTENDANCE_TYPES[type].pdfFill;
+          data.cell.styles.textColor = ATTENDANCE_TYPES[type].pdfText;
+          if (type !== "HOURS") data.cell.styles.fontStyle = "bold";
+        }
+      },
+    });
+
+    const afterMatrix = lastY(doc, 52);
+    doc.setFontSize(8);
+    let legendX = MARGIN;
+    for (const type of ATTENDANCE_TYPE_LIST) {
+      doc.setFillColor(...type.pdfFill);
+      doc.rect(legendX, afterMatrix + 10, 8, 8, "F");
+      doc.setTextColor(...MUTED);
+      const label = type.key === "HOURS" ? "Hours tutored" : type.label;
+      doc.text(label, legendX + 12, afterMatrix + 17);
+      legendX += doc.getTextWidth(label) + 34;
+    }
+    doc.setTextColor(0, 0, 0);
+  }
+
+  // --- Per-student pages: the attendance grid (yearly) and the goals checklist ---
+  for (const section of sections) {
+    if (report.period.kind === "year") {
+      doc.addPage();
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text(`${section.studentName} — Attendance FY ${report.period.fiscalYear}`, MARGIN, 40);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(...MUTED);
+      doc.text(`Tutor: ${section.tutorName}`, MARGIN, 54);
+      doc.setTextColor(0, 0, 0);
+
+      renderAttendanceTable(doc, buildAttendanceGrid(section.entries, report.period.fiscalYear), 66);
+    }
+
+    doc.addPage();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(`${section.studentName} — Goals`, MARGIN, 40);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...MUTED);
+    doc.text(`Tutor: ${section.tutorName}`, MARGIN, 54);
+    doc.setTextColor(0, 0, 0);
+
+    renderAchievementsTable(doc, section.achievements, 66);
   }
 
   const periodSlug =

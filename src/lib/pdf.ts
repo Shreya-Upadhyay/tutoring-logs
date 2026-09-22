@@ -84,7 +84,7 @@ function renderSummary(
   return lastY(doc, startY + 16);
 }
 
-function renderAttendanceTable(
+export function renderAttendanceTable(
   doc: jsPDF,
   grid: AttendanceGridResult,
   startY: number
@@ -148,7 +148,7 @@ function renderAttendanceTable(
   return y;
 }
 
-function renderAchievementsTable(
+export function renderAchievementsTable(
   doc: jsPDF,
   achievements: AchievementForPdf[],
   startY: number

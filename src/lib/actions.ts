@@ -4,6 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTutorId, setTutorCookie, clearTutorCookie } from "@/lib/tutorSession";
+import {
+  hashPassword,
+  verifyPassword,
+  normalizeEmail,
+  looksLikeEmail,
+  MIN_PASSWORD_LENGTH,
+} from "@/lib/password";
 import { ACHIEVEMENT_CATALOG } from "@/lib/achievementCatalog";
 import { AttendanceType } from "@prisma/client";
 
@@ -29,13 +36,13 @@ export interface ActionResult {
  */
 async function requireEditor(): Promise<string> {
   const id = getCurrentTutorId();
-  if (!id) redirect("/onboarding");
+  if (!id) redirect("/login");
 
   const account = await prisma.tutor.findUnique({
     where: { id: id as string },
     select: { id: true, role: true },
   });
-  if (!account) redirect("/onboarding");
+  if (!account) redirect("/login");
   if (account.role === "STAFF") {
     throw new Error("LVAEP staff accounts can view records but not change them.");
   }
@@ -57,17 +64,29 @@ async function requireOwnedStudent(studentId: string): Promise<string> {
   return tutorId;
 }
 
-// ---------- Tutor profile ----------
+// ---------- Registration and sign-in ----------
 
-export async function createTutor(formData: FormData): Promise<ActionResult> {
+/** Creates a new account. Separate from logging in to an existing one. */
+export async function signUp(formData: FormData): Promise<ActionResult> {
   const firstName = str(formData, "firstName");
   if (!firstName) return { ok: false, message: "First name is required." };
+
+  const email = normalizeEmail(str(formData, "email"));
+  if (!looksLikeEmail(email)) return { ok: false, message: "Enter a valid email address." };
+
+  const password = str(formData, "password");
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { ok: false, message: `Choose a password of at least ${MIN_PASSWORD_LENGTH} characters.` };
+  }
+  if (password !== str(formData, "confirmPassword")) {
+    return { ok: false, message: "The two passwords do not match." };
+  }
 
   const role = str(formData, "role") === "STAFF" ? "STAFF" : "TUTOR";
 
   // Staff accounts can see every tutor's records, so registering as staff can
   // be gated behind a shared code. With STAFF_ACCESS_CODE unset the gate is
-  // open - see the README note about this being an honour-system role.
+  // open - see the README note about this role.
   if (role === "STAFF") {
     const expected = process.env.STAFF_ACCESS_CODE;
     if (expected && str(formData, "accessCode") !== expected) {
@@ -75,9 +94,16 @@ export async function createTutor(formData: FormData): Promise<ActionResult> {
     }
   }
 
-  const tutor = await prisma.tutor.create({
+  const taken = await prisma.tutor.findUnique({ where: { email }, select: { id: true } });
+  if (taken) {
+    return { ok: false, message: "An account already exists for that email. Log in instead." };
+  }
+
+  const account = await prisma.tutor.create({
     data: {
       role,
+      email,
+      passwordHash: hashPassword(password),
       firstName,
       lastName: optStr(formData, "lastName"),
       site: role === "TUTOR" ? optStr(formData, "site") : null,
@@ -86,12 +112,123 @@ export async function createTutor(formData: FormData): Promise<ActionResult> {
     },
   });
 
-  setTutorCookie(tutor.id);
+  setTutorCookie(account.id);
   revalidatePath("/");
   redirect("/");
 }
 
+/** Signs in to an existing account. */
+export async function logIn(formData: FormData): Promise<ActionResult> {
+  const email = normalizeEmail(str(formData, "email"));
+  const password = str(formData, "password");
+
+  if (!email || !password) {
+    return { ok: false, message: "Enter your email and password." };
+  }
+
+  const account = await prisma.tutor.findUnique({ where: { email } });
+
+  // One message for every failure, so this cannot be used to discover which
+  // email addresses have accounts.
+  const rejected: ActionResult = { ok: false, message: "That email and password do not match." };
+  if (!account) return rejected;
+
+  if (!account.passwordHash) {
+    return {
+      ok: false,
+      message: "This account has no password yet. Use the account setup link below.",
+    };
+  }
+
+  if (!verifyPassword(password, account.passwordHash)) return rejected;
+
+  setTutorCookie(account.id);
+  revalidatePath("/");
+  redirect("/");
+}
+
+/**
+ * Finishes setting up an account created before passwords existed, so its
+ * students and attendance are not stranded. Only ever applies to accounts that
+ * have no password set.
+ */
+export async function claimLegacyAccount(
+  accountId: string,
+  formData: FormData
+): Promise<ActionResult> {
+  const account = await prisma.tutor.findUnique({ where: { id: accountId } });
+  if (!account) return { ok: false, message: "That account no longer exists." };
+  if (account.passwordHash) {
+    return { ok: false, message: "That account already has a password. Log in instead." };
+  }
+
+  const email = normalizeEmail(str(formData, "email"));
+  if (!looksLikeEmail(email)) return { ok: false, message: "Enter a valid email address." };
+
+  const password = str(formData, "password");
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { ok: false, message: `Choose a password of at least ${MIN_PASSWORD_LENGTH} characters.` };
+  }
+  if (password !== str(formData, "confirmPassword")) {
+    return { ok: false, message: "The two passwords do not match." };
+  }
+
+  const taken = await prisma.tutor.findFirst({
+    where: { email, NOT: { id: accountId } },
+    select: { id: true },
+  });
+  if (taken) return { ok: false, message: "That email is already used by another account." };
+
+  await prisma.tutor.update({
+    where: { id: accountId },
+    data: { email, passwordHash: hashPassword(password) },
+  });
+
+  setTutorCookie(accountId);
+  revalidatePath("/");
+  redirect("/");
+}
+
+export async function logOut(): Promise<void> {
+  clearTutorCookie();
+  redirect("/login");
+}
+
+/** Changes the signed-in account's own password. */
+export async function changePassword(formData: FormData): Promise<ActionResult> {
+  const accountId = getCurrentTutorId();
+  if (!accountId) redirect("/login");
+
+  const account = await prisma.tutor.findUnique({ where: { id: accountId as string } });
+  if (!account) redirect("/login");
+
+  const current = str(formData, "currentPassword");
+  if (account.passwordHash && !verifyPassword(current, account.passwordHash)) {
+    return { ok: false, message: "Your current password is not correct." };
+  }
+
+  const next = str(formData, "newPassword");
+  if (next.length < MIN_PASSWORD_LENGTH) {
+    return { ok: false, message: `Choose a password of at least ${MIN_PASSWORD_LENGTH} characters.` };
+  }
+  if (next !== str(formData, "confirmPassword")) {
+    return { ok: false, message: "The two passwords do not match." };
+  }
+
+  await prisma.tutor.update({
+    where: { id: accountId as string },
+    data: { passwordHash: hashPassword(next) },
+  });
+
+  return { ok: true, message: "Password updated." };
+}
+
+// ---------- Profile ----------
+
 export async function updateTutor(tutorId: string, formData: FormData): Promise<void> {
+  const signedIn = getCurrentTutorId();
+  if (signedIn !== tutorId) throw new Error("You can only edit your own profile.");
+
   const firstName = str(formData, "firstName");
   if (!firstName) throw new Error("Tutor first name is required.");
 
@@ -108,19 +245,6 @@ export async function updateTutor(tutorId: string, formData: FormData): Promise<
 
   revalidatePath("/");
   revalidatePath("/profile");
-  redirect("/");
-}
-
-export async function switchTutor(): Promise<void> {
-  clearTutorCookie();
-  redirect("/onboarding");
-}
-
-export async function pickTutor(tutorId: string): Promise<void> {
-  const tutor = await prisma.tutor.findUnique({ where: { id: tutorId } });
-  if (!tutor) throw new Error("Tutor not found.");
-  setTutorCookie(tutor.id);
-  revalidatePath("/");
   redirect("/");
 }
 

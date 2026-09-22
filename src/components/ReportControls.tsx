@@ -2,20 +2,27 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
-import { downloadReportPdf } from "@/lib/reportPdf";
-import type { ReportData } from "@/lib/reports";
+import { downloadReportPdf, type ReportStudentSection } from "@/lib/reportPdf";
+import type { ReportData, ReportStudentInput } from "@/lib/reports";
 
 export default function ReportControls({
   report,
   scopeLabel,
   fiscalYears,
   tutorOptions,
+  studentOptions,
+  sections,
+  studentInputs,
 }: {
   report: ReportData;
   scopeLabel: string;
   fiscalYears: string[];
   /** Staff only: lets the report be narrowed to one tutor. */
   tutorOptions: { id: string; name: string }[] | null;
+  /** Every student in scope, for the "one student only" choice. */
+  studentOptions: { id: string; name: string }[];
+  sections: ReportStudentSection[];
+  studentInputs: ReportStudentInput[];
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -92,6 +99,27 @@ export default function ReportControls({
         </div>
       )}
 
+      {studentOptions.length > 1 && (
+        <div>
+          <label className="label" htmlFor="student">
+            Students
+          </label>
+          <select
+            id="student"
+            className="input w-auto"
+            value={params.get("student") ?? "all"}
+            onChange={(e) => update({ student: e.target.value })}
+          >
+            <option value="all">All students ({studentOptions.length})</option>
+            {studentOptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} only
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {tutorOptions && (
         <div>
           <label className="label" htmlFor="tutor">
@@ -116,7 +144,7 @@ export default function ReportControls({
       <button
         type="button"
         className="btn-primary ml-auto"
-        onClick={() => downloadReportPdf({ report, scopeLabel })}
+        onClick={() => downloadReportPdf({ report, scopeLabel, sections, studentInputs })}
       >
         Download report (PDF)
       </button>

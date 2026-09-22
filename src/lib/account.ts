@@ -11,10 +11,10 @@ export async function getCurrentAccount(): Promise<Account | null> {
   return prisma.tutor.findUnique({ where: { id } });
 }
 
-/** Any signed-in account, or off to registration. */
+/** Any signed-in account, or off to the login page. */
 export async function requireAccount(): Promise<Account> {
   const account = await getCurrentAccount();
-  if (!account) redirect("/onboarding");
+  if (!account) redirect("/login");
   return account;
 }
 
