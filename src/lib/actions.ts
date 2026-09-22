@@ -99,18 +99,47 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
     return { ok: false, message: "An account already exists for that email. Log in instead." };
   }
 
-  const account = await prisma.tutor.create({
+  // Two accounts under the same name make reports ambiguous, so names have to
+  // be distinct too (add a middle initial or suffix to tell them apart).
+  const lastName = optStr(formData, "lastName");
+  const sameName = await prisma.tutor.findFirst({
+    where: {
+      firstName: { equals: firstName, mode: "insensitive" },
+      lastName: lastName
+        ? { equals: lastName, mode: "insensitive" }
+        : null,
+    },
+    select: { id: true },
+  });
+  if (sameName) {
+    return {
+      ok: false,
+      message: `An account for "${[firstName, lastName].filter(Boolean).join(" ")}" already exists. Log in, or add a middle initial to tell the two apart.`,
+    };
+  }
+
+  let account;
+  try {
+    account = await prisma.tutor.create({
     data: {
       role,
       email,
       passwordHash: hashPassword(password),
       firstName,
-      lastName: optStr(formData, "lastName"),
+      lastName,
       site: role === "TUTOR" ? optStr(formData, "site") : null,
       days: role === "TUTOR" ? optStr(formData, "days") : null,
       times: role === "TUTOR" ? optStr(formData, "times") : null,
     },
-  });
+    });
+  } catch (error) {
+    // Two people submitting the same email at once: the database unique index
+    // is the real guarantee, the check above is just for a better message.
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
+      return { ok: false, message: "An account already exists for that email. Log in instead." };
+    }
+    throw error;
+  }
 
   setTutorCookie(account.id);
   revalidatePath("/");
@@ -143,48 +172,6 @@ export async function logIn(formData: FormData): Promise<ActionResult> {
   if (!verifyPassword(password, account.passwordHash)) return rejected;
 
   setTutorCookie(account.id);
-  revalidatePath("/");
-  redirect("/");
-}
-
-/**
- * Finishes setting up an account created before passwords existed, so its
- * students and attendance are not stranded. Only ever applies to accounts that
- * have no password set.
- */
-export async function claimLegacyAccount(
-  accountId: string,
-  formData: FormData
-): Promise<ActionResult> {
-  const account = await prisma.tutor.findUnique({ where: { id: accountId } });
-  if (!account) return { ok: false, message: "That account no longer exists." };
-  if (account.passwordHash) {
-    return { ok: false, message: "That account already has a password. Log in instead." };
-  }
-
-  const email = normalizeEmail(str(formData, "email"));
-  if (!looksLikeEmail(email)) return { ok: false, message: "Enter a valid email address." };
-
-  const password = str(formData, "password");
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return { ok: false, message: `Choose a password of at least ${MIN_PASSWORD_LENGTH} characters.` };
-  }
-  if (password !== str(formData, "confirmPassword")) {
-    return { ok: false, message: "The two passwords do not match." };
-  }
-
-  const taken = await prisma.tutor.findFirst({
-    where: { email, NOT: { id: accountId } },
-    select: { id: true },
-  });
-  if (taken) return { ok: false, message: "That email is already used by another account." };
-
-  await prisma.tutor.update({
-    where: { id: accountId },
-    data: { email, passwordHash: hashPassword(password) },
-  });
-
-  setTutorCookie(accountId);
   revalidatePath("/");
   redirect("/");
 }

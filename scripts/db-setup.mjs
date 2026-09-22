@@ -96,7 +96,7 @@ async function withRetries(label, attempt) {
 
 try {
   // Data migrations that have to happen before db push (it refuses data loss).
-  const { runPreMigrations } = await import("./pre-migrations.mjs");
+  const { runPreMigrations, runPostMigrations } = await import("./pre-migrations.mjs");
   await withRetries("Pre-migration step", () => runPreMigrations(conn.value));
 
   await withRetries("Schema push", async () =>
@@ -106,11 +106,18 @@ try {
     })
   );
 
-  console.log("[db-setup] Schema is up to date.");
+  // Cleanup that needs the new schema in place.
+  await withRetries("Post-migration step", () => runPostMigrations(conn.value));
+
+  console.log("[db-setup] ===== schema is up to date =====");
 } catch {
+  // Deliberately does NOT fail the build. A deployment that dies here leaves
+  // the previous version serving and the reason buried in build logs; letting
+  // it through means the app deploys and reports the actual database problem
+  // on screen, where it can be read and fixed.
   console.error(
-    `[db-setup] Could not apply the schema. Check that the database is reachable and that ` +
-      `${conn.name} is a valid Postgres connection string.\n`
+    `\n[db-setup] ===== SCHEMA STEP FAILED — DEPLOYING ANYWAY =====\n` +
+      `[db-setup] The app will show a database error until this is resolved.\n` +
+      `[db-setup] Check that ${conn.name} is reachable and is a valid Postgres URL.\n`
   );
-  process.exit(1);
 }

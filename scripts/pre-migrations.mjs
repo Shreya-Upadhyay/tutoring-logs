@@ -56,6 +56,38 @@ async function splitNameColumns(prisma, table) {
   return `${table}: split name into firstName/lastName for ${updated} row(s)`;
 }
 
+/**
+ * Removes accounts that have no password. Those are accounts from before
+ * sign-in existed; the program starts fresh from sign-up instead of carrying
+ * them forward. Their students, attendance and achievements cascade with them.
+ *
+ * Runs AFTER the schema push, because it needs the passwordHash column to
+ * exist. Once there are none left this is a no-op on every later build.
+ */
+async function purgePasswordlessAccounts(prisma) {
+  const columns = await columnsOf(prisma, "Tutor");
+  if (columns.length === 0) return "Tutor: table not created yet, nothing to purge";
+  if (!columns.includes("passwordHash")) return "Tutor: passwordHash not added yet, skipping purge";
+
+  const removed = await prisma.$executeRawUnsafe(
+    `DELETE FROM "Tutor" WHERE "passwordHash" IS NULL`
+  );
+
+  return removed > 0
+    ? `Tutor: removed ${removed} account(s) with no password`
+    : "Tutor: no password-less accounts to remove";
+}
+
+export async function runPostMigrations(connectionString) {
+  const prisma = new PrismaClient({ datasources: { db: { url: connectionString } } });
+
+  try {
+    console.log(`[post-migrations] ${await purgePasswordlessAccounts(prisma)}`);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 export async function runPreMigrations(connectionString) {
   const prisma = new PrismaClient({ datasources: { db: { url: connectionString } } });
 
