@@ -27,8 +27,8 @@ attendance sheet as a PDF with one click.
 Deleting vs. stopping: marking a student **stopped** keeps their hours in the record (what the
 paper form's STOPPED box does). **Deleting** a student is for mistakes and test entries — it
 permanently removes their attendance and achievements, and asks you to type the student's name
-to confirm when there are sessions to lose. A tutor profile can only be deleted once it has no
-students.
+to confirm when there are sessions to lose. Tutor profiles cannot be deleted from the app at
+all — use "Switch tutor profile" to move between them.
 
 ## Local development
 

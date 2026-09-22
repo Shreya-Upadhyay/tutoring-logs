@@ -150,29 +150,6 @@ export async function deleteStudent(studentId: string): Promise<ActionResult> {
   redirect("/");
 }
 
-/**
- * Deletes a tutor profile. Refuses while the tutor still has students, so
- * this can't silently wipe out a term's worth of attendance records.
- */
-export async function deleteTutor(tutorId: string): Promise<ActionResult> {
-  const studentCount = await prisma.student.count({ where: { tutorId } });
-
-  if (studentCount > 0) {
-    return {
-      ok: false,
-      message: `This profile still has ${studentCount} student${
-        studentCount === 1 ? "" : "s"
-      }. Delete them first (from each student's page) if you really want to remove this profile.`,
-    };
-  }
-
-  await prisma.tutor.delete({ where: { id: tutorId } });
-  clearTutorCookie();
-
-  revalidatePath("/");
-  redirect("/onboarding");
-}
-
 export async function markStudentStopped(studentId: string, formData: FormData): Promise<void> {
   const reason = str(formData, "reason");
 

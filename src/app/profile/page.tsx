@@ -3,7 +3,6 @@ import { getCurrentTutorId } from "@/lib/tutorSession";
 import { updateTutor, switchTutor } from "@/lib/actions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import DeleteTutorButton from "@/components/DeleteTutorButton";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +12,6 @@ export default async function ProfilePage() {
 
   const tutor = await prisma.tutor.findUnique({ where: { id: tutorId } });
   if (!tutor) redirect("/onboarding");
-
-  const studentCount = await prisma.student.count({ where: { tutorId } });
 
   const updateWithId = updateTutor.bind(null, tutor.id);
 
@@ -64,14 +61,6 @@ export default async function ProfilePage() {
           Switch tutor profile
         </button>
       </form>
-
-      <div className="mt-8 border-t border-slate-200 pt-6 text-center">
-        <DeleteTutorButton
-          tutorId={tutor.id}
-          tutorName={tutor.name}
-          studentCount={studentCount}
-        />
-      </div>
     </main>
   );
 }

@@ -27,13 +27,27 @@ export default function DeleteStudentButton({
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="text-sm text-slate-400 underline hover:text-red-600"
-      >
-        Delete this student permanently
-      </button>
+      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-4">
+        <p className="text-sm font-medium text-slate-700">Remove this student from the app</p>
+        <p className="mt-1 text-sm text-slate-500">
+          Only for duplicates, misspelled names, or practice entries you were trying out.
+        </p>
+        <p className="mt-2 text-sm text-slate-500">
+          If tutoring has ended, use{" "}
+          <span className="font-medium text-slate-700">
+            &quot;Student is no longer being tutored&quot;
+          </span>{" "}
+          above instead. That keeps their hours and achievements in the record, which is what
+          the office needs for monthly reporting — deleting erases them.
+        </p>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="btn-danger mt-3"
+        >
+          Delete {studentName}
+        </button>
+      </div>
     );
   }
 
