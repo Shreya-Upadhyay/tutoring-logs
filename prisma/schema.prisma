@@ -1,0 +1,89 @@
+// LVAEP Tutoring Logs — data model
+// Mirrors the "Student Monthly Attendance & Achievement Form" (FY 2026-2027)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tutor {
+  id        String    @id @default(cuid())
+  name      String
+  site      String? // tutoring site / location
+  days      String? // e.g. "Tuesdays & Thursdays"
+  times     String? // e.g. "4:00 - 5:30 PM"
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  students  Student[]
+}
+
+model Student {
+  id        String   @id @default(cuid())
+  tutorId   String
+  tutor     Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  name      String
+  site      String? // Tutoring Site
+  days      String? // Day(s)
+  times     String? // Time(s)
+
+  active       Boolean   @default(true)
+  stoppedAt    DateTime?
+  stoppedReason String?
+
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  attendance  AttendanceEntry[]
+  achievements Achievement[]
+
+  @@index([tutorId])
+}
+
+enum AttendanceType {
+  HOURS // numeric hours tutored
+  TUTOR_ABSENT // TA
+  STUDENT_ABSENT // SA
+  HOLIDAY // H
+}
+
+model AttendanceEntry {
+  id        String         @id @default(cuid())
+  studentId String
+  student   Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date      DateTime // the calendar date of the session
+  type      AttendanceType @default(HOURS)
+  hours     Float? // only set when type = HOURS
+  notes     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([studentId, date])
+  @@index([studentId])
+}
+
+enum AchievementCategory {
+  ECONOMIC
+  EDUCATIONAL
+  FAMILY
+  SOCIETAL
+  OTHER
+}
+
+model Achievement {
+  id          String              @id @default(cuid())
+  studentId   String
+  student     Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  category    AchievementCategory
+  itemKey     String // stable key from the catalog, or a generated key for OTHER
+  label       String // display text (denormalized so custom "Other" text is preserved)
+  attained    Boolean             @default(false)
+  attainedAt  DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([studentId, itemKey])
+  @@index([studentId])
+}
