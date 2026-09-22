@@ -47,21 +47,26 @@ attendance sheet as a PDF with one click.
 3. Before the first deploy, go to the project's **Storage** tab, choose **Postgres**, and
    create a database. Vercel automatically adds the `DATABASE_URL` (and related) environment
    variables to the project — no separate account needed.
-4. Deploy. The build script (`npm run build`) runs `prisma generate` automatically.
-5. **Create the database tables** (one-time, after the first deploy): the simplest way is to
-   run it from your machine against the production database:
-   ```bash
-   # Pull the production env vars Vercel just set:
-   npx vercel env pull .env.production.local
-   # Push the schema to that database:
-   npx dotenv -e .env.production.local -- npx prisma db push
-   ```
-   (If you don't have the Vercel CLI yet: `npm i -g vercel`, then `vercel login` and
-   `vercel link` inside this folder first.)
-6. Reload the deployed URL — the app is live and storing data in Postgres.
+4. Deploy. The build automatically runs `prisma generate`, creates/updates the database
+   tables (`prisma db push`), and then builds the app — so there is no manual migration
+   step. If no connection string is found, the build fails with a message telling you
+   exactly which environment variable to set.
+5. Open the deployed URL — the app is live and storing data in Postgres.
 
-Whenever you change `prisma/schema.prisma`, re-run step 5's `prisma db push` (or switch to
-`prisma migrate` if you want versioned migrations as the app grows).
+The app accepts whichever connection-string variable your database integration set
+(`DATABASE_URL`, `POSTGRES_PRISMA_URL`, or `POSTGRES_URL`), so nothing needs renaming in the
+Vercel dashboard. See `src/lib/dbUrl.ts`.
+
+### If you see "Application error" on the deployed site
+
+That means the app is running but couldn't reach the database. Check, in order:
+
+1. A Postgres database exists for the project (**Storage** tab).
+2. The connection-string variable is present for the **Production** environment.
+3. The project has been **redeployed** since the database was added — the tables are created
+   during the build, so a deploy that ran before the database existed has no tables.
+
+The deployment's **Logs** tab in Vercel shows the underlying error message.
 
 ## Project structure
 

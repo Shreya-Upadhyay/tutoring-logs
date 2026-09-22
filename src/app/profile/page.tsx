@@ -4,6 +4,8 @@ import { updateTutor, switchTutor } from "@/lib/actions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProfilePage() {
   const tutorId = getCurrentTutorId();
   if (!tutorId) redirect("/onboarding");

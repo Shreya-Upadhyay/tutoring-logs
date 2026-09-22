@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getCurrentTutorId } from "@/lib/tutorSession";
 import { createStudent } from "@/lib/actions";
 
+export const dynamic = "force-dynamic";
+
 export default function NewStudentPage() {
   const tutorId = getCurrentTutorId();
   if (!tutorId) redirect("/onboarding");

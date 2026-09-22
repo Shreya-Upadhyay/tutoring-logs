@@ -3,6 +3,8 @@ import { createTutor, pickTutor } from "@/lib/actions";
 import { getCurrentTutorId } from "@/lib/tutorSession";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export default async function OnboardingPage() {
   const existingId = getCurrentTutorId();
   if (existingId) {
