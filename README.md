@@ -49,8 +49,8 @@ attendance sheet as a PDF with one click.
    variables to the project — no separate account needed.
 4. Deploy. The build automatically runs `prisma generate`, creates/updates the database
    tables (`prisma db push`), and then builds the app — so there is no manual migration
-   step. If no connection string is found, the build fails with a message telling you
-   exactly which environment variable to set.
+   step. If no database is attached yet the build still succeeds — it logs a warning and
+   the site shows a page telling you to attach one and redeploy.
 5. Open the deployed URL — the app is live and storing data in Postgres.
 
 The app accepts whichever connection-string variable your database integration set

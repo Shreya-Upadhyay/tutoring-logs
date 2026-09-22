@@ -26,13 +26,16 @@ function firstSet(names) {
 // Schema changes prefer a direct (non-pooled) connection; fall back to pooled.
 const conn = firstSet(DIRECT) ?? firstSet(POOLED);
 
+// No database attached yet: warn loudly but let the build succeed, so the site
+// still deploys and shows the "check your database" page instead of failing the
+// whole deployment. Attaching a database and redeploying creates the tables.
 if (!conn) {
-  console.error("\n[db-setup] No Postgres connection string found.");
-  console.error(`[db-setup] Looked for: ${[...new Set([...POOLED, ...DIRECT])].join(", ")}`);
-  console.error(
+  console.warn("\n[db-setup] WARNING: no Postgres connection string found — skipping schema setup.");
+  console.warn(`[db-setup] Looked for: ${[...new Set([...POOLED, ...DIRECT])].join(", ")}`);
+  console.warn(
     "[db-setup] On Vercel: project -> Storage -> Create Database -> Postgres, then redeploy.\n"
   );
-  process.exit(1);
+  process.exit(0);
 }
 
 console.log(`[db-setup] Applying schema using ${conn.name}...`);
